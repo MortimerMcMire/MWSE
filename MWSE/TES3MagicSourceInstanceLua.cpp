@@ -4,6 +4,7 @@
 #include "TES3ObjectLua.h"
 
 #include "TES3Item.h"
+#include "TES3ItemData.h"
 #include "TES3MagicSourceInstance.h"
 #include "TES3MobileProjectile.h"
 #include "TES3Reference.h"
@@ -30,6 +31,9 @@ namespace mwse {
 			usertypeDefinition.set("state", &TES3::MagicSourceInstance::state);
 			usertypeDefinition.set("itemID", sol::readonly_property([](TES3::MagicSourceInstance& self) { return self.castingItemID; }));
 			usertypeDefinition.set("magicID", sol::readonly_property([](TES3::MagicSourceInstance& self) { return self.magicID; }));
+
+			// Basic function binding.
+			usertypeDefinition.set("getMagnitudeForIndex", &TES3::MagicSourceInstance::getMagnitude);
 
 			// Access to other objects that need to be packaged.
 			usertypeDefinition.set("target", sol::readonly_property([](TES3::MagicSourceInstance& self) { return makeLuaObject(self.target); }));

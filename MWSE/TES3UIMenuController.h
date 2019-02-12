@@ -17,12 +17,17 @@ namespace TES3 {
 		static_assert(sizeof(MenuInputController) == 0xAC, "TES3::UI::MenuInputController failed size validation");
 
 		struct MenuController {
-			Element* mainRoot;
-			Element* helpRoot;
-			NI::Node* mainNode;
-			NI::Node* helpNode;
-			MenuInputController* menuInputController;
-			char unknown_[0x290];
+			Element* mainRoot; // 0x0
+			Element* helpRoot; // 0x4
+			NI::Node* mainNode; // 0x8
+			NI::Node* helpNode; // 0xC
+			MenuInputController* menuInputController; // 0x10
+			int unknown_0x14;
+			int unknown_0x18;
+			int unknown_0x1C;
+			ScriptCompiler * scriptCompiler; // 0x20
+			int unknown_0x24;
+			char unknown_0x28[0x27C];
 		};
 		static_assert(sizeof(MenuController) == 0x2A4, "TES3::UI::MenuController failed size validation");
 

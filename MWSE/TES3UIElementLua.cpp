@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -7,6 +8,11 @@
 #include "TES3UIWidgets.h"
 #include "TES3UIManagerLua.h"
 #include "TES3UIWidgetsLua.h"
+
+#include "TES3UIInventoryTile.h"
+
+#include "TES3Item.h"
+#include "TES3ItemData.h"
 
 #include "sol.hpp"
 #include "LuaManager.h"
@@ -41,12 +47,34 @@ namespace mwse {
 
 		const UI_ID idNull = static_cast<UI_ID>(TES3::UI::Property::null);
 
+		template <typename T>
+		sol::optional<T> valueDefaultAsNil(const T& value, T default) {
+			sol::optional<T> x;
+			if (value != default) {
+				x = value;
+			}
+			return x;
+		}
+
 		TES3::UI::Property toBooleanProperty(bool x) {
 			return x ? TES3::UI::Property::boolean_true : TES3::UI::Property::boolean_false;
 		}
 
 		bool toBoolean(TES3::UI::Property prop) {
 			return prop == TES3::UI::Property::boolean_true;
+		}
+
+		// Helper function to build a table for an element's properties.
+		void addPropertyToTable(sol::table& table, TES3::UI::TreeNode * node) {
+			TES3::UI::TreeNode * sentinal = *reinterpret_cast<TES3::UI::TreeNode**>(0x7D1CEC);
+			if (node == sentinal) {
+				return;
+			}
+
+			table.add(node->item);
+
+			addPropertyToTable(table, node->branchLess);
+			addPropertyToTable(table, node->branchGreaterThanOrEqual);
 		}
 
 		void bindTES3UIElement() {
@@ -64,31 +92,69 @@ namespace mwse {
 			usertypeDefinition.set("children", sol::readonly_property(
 				[](const Element& self) {
 					sol::table children = LuaManager::getInstance().getState().create_table();
-					auto it = static_cast<const Element**>(self.vectorChildren.begin);
-					auto end = static_cast<const Element**>(self.vectorChildren.end);
+					auto it = self.vectorChildren.begin;
+					auto end = self.vectorChildren.end;
 					for (int i = 1; it != end; ++it, ++i) {
 						children[i] = *it;
 					}
 					return children;
 				}
 			));
+			usertypeDefinition.set("properties", sol::readonly_property([](const Element& self) {
+				sol::table result = LuaManager::getInstance().getState().create_table();
+
+				addPropertyToTable(result, self.properties.root->nextLeafOrRoot);
+
+				return result;
+			}));
 			usertypeDefinition.set("widget", sol::readonly_property([](Element& self) { return makeWidget(self); }));
+			usertypeDefinition.set("texture", &Element::texture);
 
 			// Read-write property bindings.
 			// Many properties also set lazy-update flags through setProperty.
-			usertypeDefinition.set("borderAllSides", &TES3::UI::Element::borderAllSides);
-			usertypeDefinition.set("borderLeft", &TES3::UI::Element::borderLeft);
-			usertypeDefinition.set("borderRight", &TES3::UI::Element::borderRight);
-			usertypeDefinition.set("borderBottom", &TES3::UI::Element::borderBottom);
-			usertypeDefinition.set("borderTop", &TES3::UI::Element::borderTop);
-			usertypeDefinition.set("paddingAllSides", &TES3::UI::Element::paddingAllSides);
-			usertypeDefinition.set("paddingLeft", &TES3::UI::Element::paddingLeft);
-			usertypeDefinition.set("paddingRight", &TES3::UI::Element::paddingRight);
-			usertypeDefinition.set("paddingBottom", &TES3::UI::Element::paddingBottom);
-			usertypeDefinition.set("paddingTop", &TES3::UI::Element::paddingTop);
+			usertypeDefinition.set("borderAllSides", sol::property(
+				[](Element& self) { return self.borderAllSides; },
+				[](Element& self, sol::optional<int> value) { self.borderAllSides = value.value_or(0); }
+			));
+			usertypeDefinition.set("borderLeft", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.borderLeft, -1); },
+				[](Element& self, sol::optional<int> value) { self.borderLeft = value.value_or(-1); }
+			));
+			usertypeDefinition.set("borderRight", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.borderRight, -1); },
+				[](Element& self, sol::optional<int> value) { self.borderRight = value.value_or(-1); }
+			));
+			usertypeDefinition.set("borderBottom", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.borderBottom, -1); },
+				[](Element& self, sol::optional<int> value) { self.borderBottom = value.value_or(-1); }
+			));
+			usertypeDefinition.set("borderTop", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.borderTop, -1); },
+				[](Element& self, sol::optional<int> value) { self.borderTop = value.value_or(-1); }
+			));
+			usertypeDefinition.set("paddingAllSides", sol::property(
+				[](Element& self) { return self.paddingAllSides; },
+				[](Element& self, sol::optional<int> value) { self.paddingAllSides = value.value_or(0); }
+			));
+			usertypeDefinition.set("paddingLeft", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.paddingLeft, -1); },
+				[](Element& self, sol::optional<int> value) { self.paddingLeft = value.value_or(-1); }
+			));
+			usertypeDefinition.set("paddingRight", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.paddingRight, -1); },
+				[](Element& self, sol::optional<int> value) { self.paddingRight = value.value_or(-1); }
+			));
+			usertypeDefinition.set("paddingBottom", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.paddingBottom, -1); },
+				[](Element& self, sol::optional<int> value) { self.paddingBottom = value.value_or(-1); }
+			));
+			usertypeDefinition.set("paddingTop", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.paddingTop, -1); },
+				[](Element& self, sol::optional<int> value) { self.paddingTop = value.value_or(-1); }
+			));
 			usertypeDefinition.set("font", sol::property(
 				[](Element& self) { return self.font; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::font, value); }
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::font, value.value_or(0)); }
 			));
 			usertypeDefinition.set("positionX", sol::property(
 				[](Element& self) { return self.positionX; },
@@ -100,11 +166,11 @@ namespace mwse {
 			));
 			usertypeDefinition.set("visible", sol::property(
 				[](Element& self) { return self.visible != 0; },
-				[](Element& self, bool value) { self.setVisible(value); }
+				[](Element& self, sol::optional<bool> value) { self.setVisible(value.value_or(true)); }
 			));
-			usertypeDefinition.set("acceptMouseEvents", sol::property(
-				[](Element& self) { return self.flagAcceptMouseEvents != 0; },
-				[](Element& self, bool value) { self.flagAcceptMouseEvents = value; }
+			usertypeDefinition.set("consumeMouseEvents", sol::property(
+				[](Element& self) { return self.flagConsumeMouseEvents != 0; },
+				[](Element& self, sol::optional<bool> value) { self.flagConsumeMouseEvents = value.value_or(true); }
 			));
 			usertypeDefinition.set("nodeMinX", &Element::nodeMinX);
 			usertypeDefinition.set("nodeMaxX", &Element::nodeMaxX);
@@ -119,20 +185,20 @@ namespace mwse {
 				[](Element& self, int value) { self.setProperty(TES3::UI::Property::height, value); }
 			));
 			usertypeDefinition.set("minWidth", sol::property(
-				[](Element& self) { return self.minWidth; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::min_width, value); }
+				[](Element& self) { return valueDefaultAsNil(self.minWidth, INT32_MIN); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::min_width, value.value_or(INT32_MIN)); }
 			));
 			usertypeDefinition.set("minHeight", sol::property(
-				[](Element& self) { return self.minHeight; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::min_height, value); }
+				[](Element& self) { return valueDefaultAsNil(self.minHeight, INT32_MIN); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::min_height, value.value_or(INT32_MIN)); }
 			));
 			usertypeDefinition.set("maxWidth", sol::property(
-				[](Element& self) { return self.maxWidth; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::max_width, value); }
+				[](Element& self) { return valueDefaultAsNil(self.maxWidth, INT32_MAX); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::max_width, value.value_or(INT32_MAX)); }
 			));
 			usertypeDefinition.set("maxHeight", sol::property(
-				[](Element& self) { return self.maxHeight; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::max_height, value); }
+				[](Element& self) { return valueDefaultAsNil(self.maxHeight, INT32_MAX); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::max_height, value.value_or(INT32_MAX)); }
 			));
 			usertypeDefinition.set("autoWidth", sol::property(
 				[](Element& self) { return self.flagAutoWidth != 0; },
@@ -142,10 +208,22 @@ namespace mwse {
 				[](Element& self) { return self.flagAutoHeight != 0; },
 				[](Element& self, bool value) { self.setAutoHeight(value); }
 			));
-			usertypeDefinition.set("layoutWidthFraction", &TES3::UI::Element::layoutWidthFraction);
-			usertypeDefinition.set("layoutHeightFraction", &TES3::UI::Element::layoutHeightFraction);
-			usertypeDefinition.set("layoutOriginFractionX", &TES3::UI::Element::layoutOriginFractionX);
-			usertypeDefinition.set("layoutOriginFractionY", &TES3::UI::Element::layoutOriginFractionY);
+			usertypeDefinition.set("widthProportional", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.widthProportional, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.widthProportional = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("heightProportional", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.heightProportional, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.heightProportional = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("absolutePosAlignX", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.absolutePosAlignX, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.absolutePosAlignX = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("absolutePosAlignY", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.absolutePosAlignY, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.absolutePosAlignY = value.value_or(-1.0); }
+			));
 			usertypeDefinition.set("color", sol::property(
 				[](Element& self) {
 					sol::state& state = LuaManager::getInstance().getState();
@@ -165,31 +243,31 @@ namespace mwse {
 					self.flagUsesRGBA = 1;
 				}
 			));
-			usertypeDefinition.set("alignX", sol::property(
-				[](Element& self) { self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_x); },
-				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_x, value); }
-			));
-			usertypeDefinition.set("alignY", sol::property(
-				[](Element& self) { self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_y); },
-				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_y, value); }
-			));
 			usertypeDefinition.set("flowDirection", sol::property(
 				[](Element& self) {
-				auto flow = self.getProperty(TES3::UI::PropertyType::Property, TES3::UI::Property::flow_direction).propertyValue;
-				return (flow == TES3::UI::Property::top_to_bottom) ? "top_to_bottom" : "left_to_right";
-			},
+					auto flow = self.getProperty(TES3::UI::PropertyType::Property, TES3::UI::Property::flow_direction).propertyValue;
+					return (flow == TES3::UI::Property::top_to_bottom) ? "top_to_bottom" : "left_to_right";
+				},
 				[](Element& self, std::string value) {
-				auto prop = (value == "top_to_bottom") ? TES3::UI::Property::top_to_bottom : TES3::UI::Property::left_to_right;
-				self.setProperty(TES3::UI::Property::flow_direction, prop);
-			}
+					auto prop = (value == "top_to_bottom") ? TES3::UI::Property::top_to_bottom : TES3::UI::Property::left_to_right;
+					self.setProperty(TES3::UI::Property::flow_direction, prop);
+				}
+			));
+			usertypeDefinition.set("childAlignX", sol::property(
+				[](Element& self) { return self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_x).floatValue; },
+				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_x, value); }
+			));
+			usertypeDefinition.set("childAlignY", sol::property(
+				[](Element& self) { return self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_y).floatValue; },
+				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_y, value); }
 			));
 			usertypeDefinition.set("childOffsetX", sol::property(
-				[](Element& self) { return self.childOffsetX; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::child_offset_x, value); }
+				[](Element& self) { return valueDefaultAsNil(self.childOffsetX, INT32_MAX); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::child_offset_x, value.value_or(INT32_MAX)); }
 			));
 			usertypeDefinition.set("childOffsetY", sol::property(
-				[](Element& self) { return self.childOffsetY; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::child_offset_y, value); }
+				[](Element& self) { return valueDefaultAsNil(self.childOffsetY, INT32_MAX); },
+				[](Element& self, sol::optional<int> value) { self.setProperty(TES3::UI::Property::child_offset_y, value.value_or(INT32_MAX)); }
 			));
 			usertypeDefinition.set("wrapText", sol::property(
 				[](Element& self) {
@@ -198,19 +276,8 @@ namespace mwse {
 				},
 				[](Element& self, bool value) {
 					self.setProperty(TES3::UI::Property::wrap_text, toBooleanProperty(value));
-
-					if (value) {
-						// Set proportional height layout, so that flagSizeChanged is updated by the layout engine
-						self.layoutHeightFraction = 1.0;
-					}
+					self.flagContentChanged = 1;
 				}
-			));
-			usertypeDefinition.set("scaleMode", sol::property(
-				[](Element& self) {
-					auto prop = self.getProperty(TES3::UI::PropertyType::Property, TES3::UI::Property::scale_mode);
-					return toBoolean(prop.propertyValue);
-				},
-				[](Element& self, bool value) { self.setProperty(TES3::UI::Property::scale_mode, toBooleanProperty(value)); }
 			));
 			usertypeDefinition.set("justifyText", sol::property(
 				[](Element& self) {
@@ -229,6 +296,7 @@ namespace mwse {
 						prop = TES3::UI::Property::right;
 					}
 					self.setProperty(TES3::UI::Property::justify, prop);
+					self.flagContentChanged = 1;
 				}
 			));
 			usertypeDefinition.set("nodeOffsetX", sol::property(
@@ -246,13 +314,28 @@ namespace mwse {
 				},
 				[](Element& self, bool value) { self.setProperty(TES3::UI::Property::disabled, toBooleanProperty(value)); }
 			));
-			usertypeDefinition.set("scaleX", sol::property(
-				[](Element& self) { return self.scaleX; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::image_scale_x, value); }
+			usertypeDefinition.set("scaleMode", sol::property(
+				[](Element& self) {
+					return toBoolean(self.scale_mode);
+				},
+				[](Element& self, bool value) {
+					self.scale_mode = toBooleanProperty(value);
+					self.flagContentChanged = 1;
+				}
 			));
-			usertypeDefinition.set("scaleY", sol::property(
-				[](Element& self) { return self.scaleY; },
-				[](Element& self, int value) { self.setProperty(TES3::UI::Property::image_scale_y, value); }
+			usertypeDefinition.set("imageScaleX", sol::property(
+				[](Element& self) { return self.imageScaleX; },
+				[](Element& self, float value) {
+					self.imageScaleX = value;
+					self.flagContentChanged = 1;
+				}
+			));
+			usertypeDefinition.set("imageScaleY", sol::property(
+				[](Element& self) { return self.imageScaleY; },
+				[](Element& self, float value) {
+					self.imageScaleY = value;
+					self.flagContentChanged = 1;
+				}
 			));
 			usertypeDefinition.set("repeatKeys", sol::property(
 				[](Element& self) {
@@ -261,28 +344,55 @@ namespace mwse {
 				},
 				[](Element& self, bool value) { self.setProperty(TES3::UI::Property::repeat_keys, toBooleanProperty(value)); }
 			));
-			usertypeDefinition.set("text", sol::property(
-				[](Element& self) {
-					static auto partTextInput = TES3::UI::registerProperty("PartTextInput");
-					static auto partParaInput = TES3::UI::registerProperty("PartParagraphInput");
-					std::string text(self.getText());
-
-					// Special case code for input widgets, as getText's return value includes the text caret '|'
-					// The game's method for removing it creates extra allocations that are inconvenient to free
-					auto part = self.getProperty(TES3::UI::PropertyType::Property, TES3::UI::Property::is_part).propertyValue;
-					if (part == partTextInput || part == partParaInput) {
-						auto i = text.find('|');
-						if (i != std::string::npos) {
-							text.erase(i, 1);
-						}
-					}
-					return text;
-				},
-				[](Element& self, const char* value) {
-					// Set text and signal menu to re-layout.
-					self.setText(value);
-					self.getTopLevelParent()->timingUpdate();
+			usertypeDefinition.set("text", sol::property(getWidgetText, setWidgetText));
+			usertypeDefinition.set("contentType", sol::readonly_property([](Element& self) {
+				switch (self.contentType) {
+				case TES3::UI::Property::model:
+					return "model";
+				case TES3::UI::Property::text:
+					return "text";
+				case TES3::UI::Property::image:
+					return "image";
+				case TES3::UI::Property::rect:
+					return "rect";
+				default:
+					return "layout";
 				}
+			}));
+			usertypeDefinition.set("contentPath", sol::property(
+				[](Element& self) { return self.contentPath.cString; },
+				[](Element& self, sol::optional<const char*> path) { self.setIcon(path.value_or("")); }
+			));
+
+			// Deprecated properties.
+			// TODO: Remove in final release.
+			usertypeDefinition.set("layoutWidthFraction", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.widthProportional, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.widthProportional = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("layoutHeightFraction", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.heightProportional, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.heightProportional = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("layoutOriginFractionX", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.absolutePosAlignX, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.absolutePosAlignX = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("layoutOriginFractionY", sol::property(
+				[](Element& self) { return valueDefaultAsNil(self.absolutePosAlignY, -1.0f); },
+				[](Element& self, sol::optional<double> value) { self.absolutePosAlignY = value.value_or(-1.0); }
+			));
+			usertypeDefinition.set("alignX", sol::property(
+				[](Element& self) { return self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_x).floatValue; },
+				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_x, value); }
+			));
+			usertypeDefinition.set("alignY", sol::property(
+				[](Element& self) { return self.getProperty(TES3::UI::PropertyType::Float, TES3::UI::Property::align_y).floatValue; },
+				[](Element& self, float value) { self.setProperty(TES3::UI::Property::align_y, value); }
+			));
+			usertypeDefinition.set("acceptMouseEvents", sol::property(
+				[](Element& self) { return self.flagConsumeMouseEvents != 0; },
+				[](Element& self, sol::optional<bool> value) { self.flagConsumeMouseEvents = value.value_or(true); }
 			));
 
 			// Custom property accessor functions.
@@ -306,7 +416,7 @@ namespace mwse {
 				}
 			);
 			usertypeDefinition.set("getPropertyObject",
-				[](Element& self, const char* propertyName) -> sol::object {
+				[](sol::this_state state, Element& self, const char* propertyName, sol::optional<std::string> typeCast) -> sol::object {
 					TES3::UI::Property prop = TES3::UI::registerProperty(propertyName);
 					auto ptr = self.getProperty(TES3::UI::PropertyType::Pointer, prop).ptrValue;
 
@@ -314,15 +424,31 @@ namespace mwse {
 						return sol::nil;
 					}
 
-					auto object = static_cast<TES3::BaseObject*>(ptr);
+					if (!typeCast) {
+						auto object = static_cast<TES3::BaseObject*>(ptr);
 
-					switch (object->objectType) {
-					case TES3::ObjectType::MobileCreature:
-					case TES3::ObjectType::MobileNPC:
-					case TES3::ObjectType::MobilePlayer:
-						return makeLuaObject(static_cast<TES3::MobileObject*>(ptr));
-					default:
-						return makeLuaObject(static_cast<TES3::BaseObject*>(ptr));
+						switch (object->objectType) {
+						case TES3::ObjectType::MobileCreature:
+						case TES3::ObjectType::MobileNPC:
+						case TES3::ObjectType::MobilePlayer:
+							return makeLuaObject(static_cast<TES3::MobileObject*>(ptr));
+						default:
+							return makeLuaObject(static_cast<TES3::BaseObject*>(ptr));
+						}
+					}
+					else {
+						if (typeCast.value() == "tes3itemData") {
+							lua_State* L = state;
+							return sol::make_object(L, static_cast<TES3::ItemData*>(ptr));
+						}
+						else if (typeCast.value() == "tes3gameFile") {
+							return makeLuaObject(static_cast<TES3::GameFile*>(ptr));
+						}
+						else if (typeCast.value() == "tes3inventoryTile") {
+							lua_State* L = state;
+							return sol::make_object(L, static_cast<TES3::UI::InventoryTile*>(ptr));
+						}
+						return sol::nil;
 					}
 				}
 			);
@@ -352,8 +478,23 @@ namespace mwse {
 			);
 
 			// Event functions.
-			usertypeDefinition.set("register",
-				[](Element& self, const std::string& eventID, sol::protected_function callback) {
+			usertypeDefinition.set("register", [](Element& self, const std::string& eventID, sol::object callback) {
+				// Callback is supposed to be an address. Dangerous advanced usage, sets the actual property.
+				if (callback.is<unsigned int>()) {
+					// Map friendlier event names to standard UI events1
+					auto it = standardNamedEvents.find(eventID);
+					if (it != standardNamedEvents.end()) {
+						self.setProperty(it->second, reinterpret_cast<TES3::UI::EventCallback>(callback.as<unsigned int>()));
+						return;
+					}
+
+					// Check UI registry for custom event
+					TES3::UI::Property prop = TES3::UI::registerProperty(eventID.c_str());
+					self.setProperty(prop, reinterpret_cast<TES3::UI::EventCallback>(callback.as<unsigned int>()));
+				}
+
+				// Callback is a lua event, put it into our custom handler system.
+				else if (callback.is<sol::protected_function>()) {
 					if (!callback.valid()) {
 						const char *errorSource = self.name.cString ? self.name.cString : "(unnamed)";
 						log::getLog() << "UI register event has invalid callback: target " << errorSource << ", event " << eventID << std::endl;
@@ -369,9 +510,15 @@ namespace mwse {
 
 					// Check UI registry for custom event
 					TES3::UI::Property prop = TES3::UI::registerProperty(eventID.c_str());
-					registerUIEvent(self, prop, callback);
+					registerUIEvent(self, prop, callback.as<sol::protected_function>());
 				}
-			);
+				
+				// Unrecognized type, spit an error.
+				else {
+					const char *errorSource = self.name.cString ? self.name.cString : "(unnamed)";
+					log::getLog() << "UI register event has invalid callback type: target " << errorSource << ", event " << eventID << std::endl;
+				}
+			});
 			usertypeDefinition.set("unregister",
 				[](Element& self, const std::string& eventID) {
 					// Map friendlier event names to standard UI events
@@ -395,7 +542,7 @@ namespace mwse {
 			);
 			usertypeDefinition.set("triggerEvent",
 				[](Element& self, sol::object args) {
-					if (args.is<sol::table>()) {
+					if (args.get_type() == sol::type::table) {
 						auto eventData = args.as<sol::table>();
 						triggerEvent(self, eventData["id"], eventData["data0"], eventData["data1"]);
 						return;
@@ -418,6 +565,7 @@ namespace mwse {
 			// Layout functions.
 			usertypeDefinition.set("destroyChildren", [](Element& self) { return self.destroyChildren(); });
 			usertypeDefinition.set("findChild", [](Element& self, UI_ID id) { return self.findChild(id); });
+			usertypeDefinition.set("getContentElement", [](Element& self) { return self.getContentElement(); });
 			usertypeDefinition.set("getTopLevelParent", [](Element& self) { return self.getTopLevelParent(); });
 			usertypeDefinition.set("reorderChildren", [](Element& self, sol::object insertBefore, sol::object moveFrom, int count) {
 				int indexInsertBefore, indexMoveFrom;
@@ -446,39 +594,90 @@ namespace mwse {
 			usertypeDefinition.set("updateLayout", [](Element& self) { self.performLayout(1); });
 
 			// Creation/destruction functions.
-			usertypeDefinition.set("createBlock", [](Element& self, sol::table args) {
-				return self.createBlock(args.get_or("id", idNull));
-			});
-			usertypeDefinition.set("createButton", [](Element& self, sol::table args) {
-				auto button = self.createButton(args.get_or("id", idNull));
-				auto text = args.get<sol::optional<const char*>>("text");
-				if (text) {
-					button->setText(text.value());
+			usertypeDefinition.set("createBlock", [](Element& self, sol::optional<sol::table> args) {
+				if (args) {
+					return self.createBlock(args.value().get_or("id", idNull));
 				}
+				else {
+					return self.createBlock(idNull);
+				}
+			});
+			usertypeDefinition.set("createButton", [](Element& self, sol::optional<sol::table> args) {
+				Element * button = nullptr;
+				if (args) {
+					button = self.createButton(args.value().get_or("id", idNull));
+
+					auto text = args.value().get<sol::optional<const char*>>("text");
+					if (text) {
+						button->setText(text.value());
+					}
+				}
+				else {
+					button = self.createButton(idNull);
+				}
+
 				return button;
 			});
-			usertypeDefinition.set("createFillBar", [](Element& self, sol::table args) {
-				auto element = self.createFillBar(args.get_or("id", idNull));
-				auto fillbar = TES3::UI::WidgetFillbar::fromElement(element);
-				fillbar->setCurrent(args.get_or("current", 0));
-				fillbar->setMax(args.get_or("max", 0));
+			usertypeDefinition.set("createDivider", [](Element& self, sol::optional<sol::table> args) {
+				Element * image = nullptr;
+				if (args) {
+					image = self.createImage(args.value().get_or("id", idNull), "Textures\\menu_divider.tga");
+				}
+				else {
+					image = self.createImage(idNull, "Textures\\menu_divider.tga");
+				}
+				image->borderAllSides = 8;
+				image->widthProportional = 1.0;
+				image->flagExtendImageToBounds = 1;
+				return image;
+			});
+			usertypeDefinition.set("createFillBar", [](Element& self, sol::optional<sol::table> args) {
+				Element * element = nullptr;
+				if (args) {
+					element = self.createFillBar(args.value().get_or("id", idNull));
+					auto fillbar = TES3::UI::WidgetFillbar::fromElement(element);
+					fillbar->setCurrent(args.value().get_or("current", 0));
+					fillbar->setMax(args.value().get_or("max", 0));
+				}
+				else {
+					element = self.createFillBar(idNull);
+					auto fillbar = TES3::UI::WidgetFillbar::fromElement(element);
+					fillbar->setCurrent(0);
+					fillbar->setMax(0);
+				}
 				return element;
 			});
-			usertypeDefinition.set("createHorizontalScrollPane", [](Element& self, sol::table args) {
-				auto scrollpane = self.createHorizontalScrollPane(args.get_or("id", idNull));
+			usertypeDefinition.set("createHorizontalScrollPane", [](Element& self, sol::optional<sol::table> args) {
+				Element * scrollpane = nullptr;
+				if (args) {
+					scrollpane = self.createHorizontalScrollPane(args.value().get_or("id", idNull));
+				}
+				else {
+					scrollpane = self.createHorizontalScrollPane(idNull);
+				}
 
 				// Add mouse wheel handlers (see event dispatch patch in TES3UIManager.cpp)
 				scrollpane->setProperty(TES3::UI::Property::event_mouse_scroll_down, TES3::UI::onScrollPaneMousewheel);
 				scrollpane->setProperty(TES3::UI::Property::event_mouse_scroll_up, TES3::UI::onScrollPaneMousewheel);
 				return scrollpane;
 			});
-			usertypeDefinition.set("createHypertext", [](Element& self, sol::table args) {
-				return self.createHypertext(args.get_or("id", idNull));
+			usertypeDefinition.set("createHypertext", [](Element& self, sol::optional<sol::table> args) {
+				if (args) {
+					return self.createHypertext(args.value().get_or("id", idNull));
+				}
+				else {
+					return self.createHypertext(idNull);
+				}
 			});
 			usertypeDefinition.set("createImage", [](Element& self, sol::table args) {
 				auto path = args.get<sol::optional<const char*>>("path");
 				if (path) {
-					return self.createImage(args.get_or("id", idNull), path.value());
+					std::string pathStr = path.value();
+					if (pathStr.find("/") != std::string::npos) {
+						std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+					}
+
+					return self.createImage(args.get_or("id", idNull), pathStr.c_str());
 				}
 				else {
 					log::getLog() << "createImage: path argument is required." << std::endl;
@@ -492,15 +691,25 @@ namespace mwse {
 			usertypeDefinition.set("createNif", [](Element& self, sol::table args) {
 				auto path = args.get<sol::optional<const char*>>("path");
 				if (path) {
-					return self.createNif(args.get_or("id", idNull), path.value());
+					std::string pathStr = path.value();
+					if (pathStr.find("/") != std::string::npos) {
+						std::replace(pathStr.begin(), pathStr.end(), '/', '\\');
+					}
+
+					return self.createNif(args.get_or("id", idNull), pathStr.c_str());
 				}
 				else {
 					log::getLog() << "createNif: path argument is required." << std::endl;
 				}
 				return static_cast<Element*>(nullptr);
 			});
-			usertypeDefinition.set("createParagraphInput", [](Element& self, sol::table args) {
-				return self.createParagraphInput(args.get_or("id", idNull));
+			usertypeDefinition.set("createParagraphInput", [](Element& self, sol::optional<sol::table> args) {
+				if (args) {
+					return self.createParagraphInput(args.value().get_or("id", idNull));
+				}
+				else {
+					return self.createParagraphInput(idNull);
+				}
 			});
 			usertypeDefinition.set("createRect", [](Element& self, sol::table args) {
 				Element* rect = self.createRect(args.get_or("id", idNull));
@@ -532,11 +741,20 @@ namespace mwse {
 				slider->setJumpX(args.get_or("jump", 5));
 				return element;
 			});
-			usertypeDefinition.set("createTextInput", [](Element& self, sol::table args) {
-				return self.createTextInput(args.get_or("id", idNull));
+			usertypeDefinition.set("createTextInput", [](Element& self, sol::optional<sol::table> args) {
+				if (args) {
+					return self.createTextInput(args.value().get_or("id", idNull));
+				}
+				else {
+					return self.createTextInput(idNull);
+				}
 			});
 			usertypeDefinition.set("createTextSelect", [](Element& self, sol::table args) {
 				auto element = self.createTextSelect(args.get_or("id", idNull));
+				auto text = args.get<sol::optional<const char*>>("text");
+				if (text) {
+					element->setText(text.value());
+				}
 				auto textSelect = TES3::UI::WidgetTextSelect::fromElement(element);
 				auto state = args.get<sol::optional<int>>("state");
 				if (state) {
@@ -544,11 +762,20 @@ namespace mwse {
 				}
 				return element;
 			});
-			usertypeDefinition.set("createThinBorder", [](Element& self, sol::table args) {
-				return self.createNif(args.get_or("id", idNull), "menu_thin_border.nif");
+			usertypeDefinition.set("createThinBorder", [](Element& self, sol::optional<sol::table> args) {
+				if (args) {
+					return self.createNif(args.value().get_or("id", idNull), "menu_thin_border.nif");
+				}
+				else {
+					return self.createNif(idNull, "menu_thin_border.nif");
+				}
 			});
 			usertypeDefinition.set("createVerticalScrollPane", [](Element& self, sol::table args) {
 				auto scrollpane = self.createVerticalScrollPane(args.get_or("id", idNull));
+
+				if (args.get_or("hideFrame", false)) {
+					scrollpane->setIcon("");
+				}
 
 				// Add mouse wheel handlers (see event dispatch patch in TES3UIManager.cpp)
 				scrollpane->setProperty(TES3::UI::Property::event_mouse_scroll_down, TES3::UI::onScrollPaneMousewheel);

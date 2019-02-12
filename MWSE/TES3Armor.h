@@ -22,11 +22,27 @@ namespace TES3 {
 			Shield = 0x8,
 			LeftBracer = 0x9,
 			RightBracer = 0xA,
+
+			First = Helmet,
+			Last = RightBracer,
+		};
+	}
+
+	namespace ArmorWeightClass {
+		typedef unsigned int value_type;
+
+		enum ArmorSlot : value_type {
+			Light = 0x0,
+			Medium = 0x1,
+			Heavy = 0x2,
+
+			First = Light,
+			Last = Heavy,
 		};
 	}
 
 	struct Armor : Item {
-		Iterator<void> stolenList; // 0x30
+		Iterator<TES3::BaseObject> stolenList; // 0x30
 		char * name; // 0x44
 		Script * script; // 0x48
 		char * model; // 0x4C
@@ -44,9 +60,17 @@ namespace TES3 {
 		// Other related this-call functions.
 		//
 
-		int getWeightClass();
 		float calculateArmorRating(MobileActor * actor);
+		float calculateArmorRatingForNPC(NPC * npc);
+		const char * getSlotName();
+		int getWeightClass();
 
 	};
 	static_assert(sizeof(Armor) == 0xC4, "TES3::Armor failed size validation");
+
+	struct ArmorSlotData {
+		int slot;
+		std::string name;
+		float weight;
+	};
 }

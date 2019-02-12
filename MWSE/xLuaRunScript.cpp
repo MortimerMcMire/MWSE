@@ -68,8 +68,18 @@ namespace mwse
 			cachedModule = cacheHit->second;
 		}
 		else {
-			auto result = state.safe_script_file("./Data Files/MWSE/mods/" + scriptName + ".lua");
-			if (!result.valid()) {
+			sol::protected_function_result result = state.safe_script_file("./Data Files/MWSE/mods/" + scriptName + ".lua");
+			if (result.valid()) {
+				sol::object r = result;
+				if (r.is<sol::table>()) {
+					cachedScripts[scriptNameKey] = result;
+					cachedModule = result;
+				}
+				else {
+					return 0.0f;
+				}
+			}
+			else {
 				sol::error error = result;
 				log::getLog() << "Lua error encountered for xLuaRunScript call of '" << scriptName << "' from script '" << virtualMachine.getScript()->name << "':" << std::endl << error.what() << std::endl;
 
@@ -77,23 +87,13 @@ namespace mwse
 				mwse::Stack::getInstance().clear();
 				return 0.0f;
 			}
-
-			// If we got back a table, store it in cache.
-			sol::object resultObject = result;
-			if (resultObject.is<sol::table>()) {
-#if _DEBUG
-				log::getLog() << "Inserted run script into cache: " << scriptName << std::endl;
-#endif
-				cachedScripts[scriptNameKey] = resultObject;
-				cachedModule = resultObject;
-			}
 		}
 
 		// Run the script.
 		if (cachedModule != sol::nil) {
-			sol::protected_function execute = cachedModule["execute"];
+			sol::optional<sol::protected_function> execute = cachedModule["execute"];
 			if (execute) {
-				auto result = execute();
+				sol::protected_function_result result = execute.value().call();
 				if (!result.valid()) {
 					sol::error error = result;
 					log::getLog() << "Lua error encountered for xLuaRunScript call of '" << scriptName << "' from script '" << virtualMachine.getScript()->name << "':" << std::endl << error.what() << std::endl;

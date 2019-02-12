@@ -3,9 +3,16 @@
 #include <utility>
 #include <vector>
 
+#include "TES3MobileActor.h"
+#include "TES3MobilePlayer.h"
+#include "TES3NPC.h"
+#include "TES3WorldController.h"
+
 #include "TES3UIElement.h"
 #include "TES3UIManager.h"
 #include "TES3UIMenuController.h"
+
+#include "LuaUtil.h"
 
 #include "sol.hpp"
 #include "LuaManager.h"
@@ -47,21 +54,23 @@ namespace mwse {
 						eventData["data0"] = data0;
 						eventData["data1"] = data1;
 
-						// Call into Lua
 						// Note: sol::protected_function needs to be a local, as Lua functions can destroy it when modifying events.
 						sol::protected_function callback = eventLua.callback;
-						auto result = callback(eventData);
-						if (!result.valid()) {
+						sol::protected_function_result result = callback(eventData);
+						if (result.valid()) {
+							sol::optional<TES3::UI::Boolean> value = result;
+							return value.value_or(1);
+						}
+						else {
 							sol::error error = result;
 							const char *errorSource = source->name.cString ? source->name.cString : "(unnamed)";
 							log::getLog() << "Lua error encountered during UI event from element " << errorSource << ":" << std::endl << error.what() << std::endl;
+							return 1;
 						}
-						// Default return true to event system
-						sol::optional<TES3::UI::Boolean> ret = result;
-						return ret.value_or(1);
 					}
 				}
 			}
+
 			return 1;
 		}
 
@@ -77,15 +86,15 @@ namespace mwse {
 						eventData["source"] = source;
 						eventData["id"] = Property::event_destroy;
 
-						// Call into Lua
 						// Note: sol::protected_function needs to be a local, as Lua functions can destroy it when modifying events.
 						sol::protected_function callback = eventLua.callback;
-						auto result = callback(eventData);
+						sol::protected_function_result result = callback();
 						if (!result.valid()) {
 							sol::error error = result;
 							const char *errorSource = source->name.cString ? source->name.cString : "(unnamed)";
 							log::getLog() << "Lua error encountered during UI event from element " << errorSource << ":" << std::endl << error.what() << std::endl;
 						}
+
 						break;
 					}
 				}
@@ -141,6 +150,12 @@ namespace mwse {
 			// Check for existing event
 			for (auto it = elementEvents.begin(); it != elementEvents.end(); ++it) {
 				if (it->id == eventID) {
+					// Restore callback
+					if (eventID != Property::event_destroy) {
+						target.setProperty(eventID, it->original);
+					}
+
+					// Remove event
 					elementEvents.erase(it);
 					return;
 				}
@@ -186,6 +201,7 @@ namespace mwse {
 			auto tes3ui = state.create_named_table("tes3ui");
 
 			tes3ui["registerID"] = TES3::UI::registerID;
+			tes3ui["lookupID"] = TES3::UI::lookupID;
 			tes3ui["registerProperty"] = TES3::UI::registerProperty;
 			tes3ui.set_function("createMenu", [](sol::table args) {
 				auto id = args.get<sol::optional<UI_ID>>("id");
@@ -207,7 +223,26 @@ namespace mwse {
 
 				return menu;
 			});
+			tes3ui.set_function("createHelpLayerMenu", [](sol::table args) {
+				auto id = args.get<sol::optional<UI_ID>>("id");
+				if (!id) {
+					log::getLog() << "createHelpLayerMenu: id argument is required." << std::endl;
+					return static_cast<Element*>(nullptr);
+				}
+				return TES3::UI::createHelpLayerMenu(id.value());
+			});
+			tes3ui.set_function("createTooltipMenu", []() {
+				return TES3::UI::createTooltipMenu(TES3::UI::UI_ID(TES3::UI::Property::HelpMenu));
+			});
 			tes3ui["findMenu"] = TES3::UI::findMenu;
+			tes3ui["findHelpLayerMenu"] = TES3::UI::findHelpLayerMenu;
+			tes3ui["forcePlayerInventoryUpdate"] = []() {
+				auto worldController = TES3::WorldController::get();
+				auto playerMobile = worldController->getMobilePlayer();
+				worldController->inventoryData->clearIcons(2);
+				worldController->inventoryData->addInventoryItems(&playerMobile->npcInstance->inventory, 2);
+				TES3::UI::updateInventoryMenuTiles();
+			};
 			tes3ui["enterMenuMode"] = TES3::UI::enterMenuMode;
 			tes3ui["leaveMenuMode"] = TES3::UI::leaveMenuMode;
 			tes3ui["acquireTextInput"] = TES3::UI::acquireTextInput;
@@ -216,6 +251,73 @@ namespace mwse {
 				auto colour = TES3::UI::getPaletteColour(TES3::UI::registerProperty(name));
 				return state.create_table_with(1, colour.x, 2, colour.y, 3, colour.z);
 			});
+			tes3ui["updateInventoryTiles"] = &TES3::UI::updateInventoryMenuTiles;
+			tes3ui["updateBarterMenuTiles"] = &TES3::UI::updateBarterMenuTiles;
+			tes3ui["updateContentsMenuTiles"] = &TES3::UI::updateContentsMenuTiles;
+			tes3ui["updateInventorySelectTiles"] = []() -> sol::optional<int> {
+				auto menu = TES3::UI::findMenu(*reinterpret_cast<TES3::UI::UI_ID*>(0x7D3C14));
+				if (menu == nullptr) {
+					return sol::optional<int>();
+				}
+
+				auto pane = menu->findChild(*reinterpret_cast<TES3::UI::UI_ID*>(0x7D821C));
+				pane->destroyChildren();
+
+				int count = TES3::UI::updateSelectInventoryTiles();
+
+				menu->timingUpdate();
+
+				return count;
+			};
+			tes3ui["getInventorySelectType"] = TES3::UI::getInventorySelectType;
+			tes3ui["getServiceActor"] = []() {
+				return mwse::lua::makeLuaObject(TES3::UI::getServiceActor());
+			};
+			tes3ui["showScrollMenu"] = &TES3::UI::showScrollMenu;
+			tes3ui["showBookMenu"] = &TES3::UI::showBookMenu;
+
+			tes3ui["logToConsole"] = [](const char* text, sol::optional<bool> isCommand) {
+				TES3::UI::logToConsole(text, isCommand.value_or(false));
+			};
+
+			// Add binding for TES3::UI::TreeItem type.
+			// TODO: Move this to its own file after TES3::UI::Tree has been made a template.
+			{
+				auto usertypeDefinition = state.create_simple_usertype<TES3::UI::TreeItem>();
+
+				usertypeDefinition.set("id", &TES3::UI::TreeItem::key);
+				usertypeDefinition.set("name", sol::property([](TES3::UI::TreeItem& self) {
+					return TES3::UI::lookupID(self.key);
+				}));
+				usertypeDefinition.set("type", sol::property([](TES3::UI::TreeItem& self) {
+					return unsigned int(self.valueType) & 0x7F;
+				}));
+				usertypeDefinition.set("value", sol::property([](TES3::UI::TreeItem& self) -> sol::object {
+					sol::state& state = LuaManager::getInstance().getState();
+
+					unsigned int type = unsigned int(self.valueType) & 0x7F;
+
+					switch (type) {
+					case TES3::UI::PropertyType::Integer:
+						return sol::make_object(state, self.value.integerValue);
+					case TES3::UI::PropertyType::Float:
+						return sol::make_object(state, self.value.floatValue);
+					case TES3::UI::PropertyType::Property:
+						if (self.value.propertyValue == TES3::UI::Property::boolean_true) {
+							return sol::make_object(state, true);
+						}
+						else if (self.value.propertyValue == TES3::UI::Property::boolean_false) {
+							return sol::make_object(state, false);
+						}
+						else {
+							return sol::make_object(state, self.value.propertyValue);
+						}
+					}
+					return sol::nil;
+				}));
+
+				state.set_usertype("tes3uiProperty", usertypeDefinition);
+			}
 		}
 
 	}

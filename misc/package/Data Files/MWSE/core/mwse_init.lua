@@ -25,6 +25,13 @@ end
 -- Extend base API: math
 -------------------------------------------------
 
+-- Seed random number generator.
+-- There are reports that the first few results aren't random enough. Try and likely fail to make people happy.
+math.randomseed(os.time())
+for i = 1, 10 do
+	math.random()
+end
+
 function math.clamp(value, low, high)
 	if (low > high) then
 		low, high = high, low
@@ -208,10 +215,12 @@ end
 function string.startswith(haystack, needle)
 	return string.sub(haystack, 1, string.len(needle)) == needle
 end
+getmetatable("").startswith = string.startswith
 
 function string.endswith(haystack, needle)
 	return needle=='' or string.sub(haystack, -string.len(needle)) == needle
 end
+getmetatable("").endswith = string.endswith
 
 
 -------------------------------------------------
@@ -257,8 +266,13 @@ _G.json = require("dkjson")
 -------------------------------------------------
 
 function json.loadfile(fileName)
+	-- Allow optional suffix, for 'lfs.dir()' compatiblity.
+	if not fileName:lower():find("%.json$") then
+		fileName = fileName .. ".json"
+	end
+
 	-- Load the contents of the file.
-	local f = io.open("Data Files/MWSE/" .. fileName .. ".json", "r")
+	local f = io.open("Data Files/MWSE/" .. fileName, "r")
 	if (f == nil) then
 		return nil
 	end
@@ -290,7 +304,7 @@ end
 -------------------------------------------------
 
 function mwse.log(str, ...)
-	print(str:format(...))
+	print(tostring(str):format(...))
 end
 
 function mwse.loadConfig(fileName)
@@ -303,26 +317,53 @@ function mwse.saveConfig(fileName, object, config)
 	end
 end
 
+
+-------------------------------------------------
+-- Extend our base API: tes3ui
+-------------------------------------------------
+
+function tes3ui.log(str, ...)
+	tes3ui.logToConsole(tostring(str):format(...), false)
+end
+
+
 -------------------------------------------------
 -- Usertype Extensions: tes3uiElement
 -------------------------------------------------
 
 -- Create a button composed of images that has a mouse over and mouse pressed state.
 function tes3uiElement:createImageButton(params)
+	-- Get the button block params.
+	local blockParams = params.blockParams or {
+		id = params.id,
+	}
+	local idleParams = params.idleParams or {
+		id = params.idleId,
+		path = params.idle,
+	}
+	local overParams = params.overParams or {
+		id = params.overId,
+		path = params.over,
+	}
+	local pressedParams = params.pressedParams or {
+		id = params.pressedId,
+		path = params.pressed,
+	}
+
 	-- Create our parent block.
-	local buttonBlock = self:createBlock({ id = params.id })
+	local buttonBlock = self:createBlock(blockParams)
 	buttonBlock.autoWidth = true
 	buttonBlock.autoHeight = true
 
 	-- Create our child buttons using the params provided.
-	local buttonIdle = buttonBlock:createImage({ path = params.idle })
-	local buttonOver = buttonBlock:createImage({ path = params.over })
-	local buttonPressed = buttonBlock:createImage({ path = params.pressed })
+	local buttonIdle = buttonBlock:createImage(idleParams)
+	local buttonOver = buttonBlock:createImage(overParams)
+	local buttonPressed = buttonBlock:createImage(pressedParams)
 
 	-- Prevent any of the above-created buttons from consuming the mouse events.
-	buttonIdle.acceptMouseEvents = false
-	buttonOver.acceptMouseEvents = false
-	buttonPressed.acceptMouseEvents = false
+	buttonIdle.consumeMouseEvents = false
+	buttonOver.consumeMouseEvents = false
+	buttonPressed.consumeMouseEvents = false
 
 	-- Hide the over/pressed buttons for now.
 	buttonOver.visible = false

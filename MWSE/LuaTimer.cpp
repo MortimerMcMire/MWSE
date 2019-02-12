@@ -173,13 +173,13 @@ namespace mwse {
 				data["timer"] = timer;
 
 				// Invoke the callback.
-				auto result = timer->callback(data);
+				sol::protected_function callback = timer->callback;
+				sol::protected_function_result result = callback(data);
 				if (!result.valid()) {
-					// If the callback encountered an error, log it.
 					sol::error error = result;
 					log::getLog() << "Lua error encountered in timer callback:" << std::endl << error.what() << std::endl;
-					
-					// Also cancel the timer.
+
+					// Cancel the timer.
 					cancelTimer(timer);
 					continue;
 				}
@@ -306,9 +306,9 @@ namespace mwse {
 			return controller->createTimer(0.0000001, callback, 1);
 		}
 
-		// Create a timer that will complete in the next simulation cycle.
-		std::shared_ptr<Timer> legacyTimerDelayOneSimulationFrame(sol::protected_function callback) {
-			std::shared_ptr<TimerController> controller = LuaManager::getInstance().getTimerController(TimerType::SimulationTime);
+		// Create a timer that will complete in the next cycle, defaulting to simulation time.
+		std::shared_ptr<Timer> legacyTimerDelayOneFrameSpecified(sol::protected_function callback, sol::optional<int> type) {
+			std::shared_ptr<TimerController> controller = LuaManager::getInstance().getTimerController(static_cast<TimerType>(type.value_or((int)TimerType::SimulationTime)));
 			if (controller == nullptr) {
 				return nullptr;
 			}
@@ -418,7 +418,7 @@ namespace mwse {
 			state["timer"]["frame"]["reset"] = &legacyTimerReset;
 			state["timer"]["cancel"] = &legacyTimerCancel;
 			state["timer"]["frame"]["cancel"] = &legacyTimerCancel;
-			state["timer"]["delayOneFrame"] = &legacyTimerDelayOneSimulationFrame;
+			state["timer"]["delayOneFrame"] = &legacyTimerDelayOneFrameSpecified;
 			state["timer"]["frame"]["delayOneFrame"] = &legacyTimerDelayOneFrame;
 
 			// Let new TimerControllers get made.

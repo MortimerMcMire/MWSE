@@ -30,11 +30,13 @@
 #include "Stack.h"
 
 #include "TES3DataHandler.h"
+#include "TES3GameFile.h"
 #include "TES3GlobalVariable.h"
 #include "TES3Game.h"
 #include "TES3MobilePlayer.h"
 #include "TES3Reference.h"
 #include "TES3Script.h"
+#include "TES3ItemData.h"
 #include "TES3WorldController.h"
 
 using namespace mwse;
@@ -113,7 +115,7 @@ TES3::Script* VirtualMachine::getScript()
 
 TES3::BaseObject * VirtualMachine::getTemplate(const char *id)
 {
-	return tes3::getDataHandler()->nonDynamicData->resolveObject(id);
+	return TES3::DataHandler::get()->nonDynamicData->resolveObject(id);
 }
 
 TES3::Reference * VirtualMachine::getReference()
@@ -125,11 +127,11 @@ TES3::Reference * VirtualMachine::getReference(const char *id)
 {
 	bool isplayer = !_stricmp(id, "player") || !_stricmp(id, "playersavegame");
 	if (isplayer) {
-		return tes3::getWorldController()->getMobilePlayer()->reference;
+		return TES3::WorldController::get()->getMobilePlayer()->reference;
 	}
 	else
 	{
-		return tes3::getDataHandler()->nonDynamicData->findFirstCloneOfActor(id);
+		return TES3::DataHandler::get()->nonDynamicData->findFirstCloneOfActor(id);
 	}
 }
 
@@ -163,7 +165,7 @@ void VirtualMachine::setReference(TES3::Reference *reference)
 
 TES3::Reference * VirtualMachine::getCurrentTarget()
 {
-	return tes3::getGame()->playerTarget;
+	return TES3::Game::get()->playerTarget;
 }
 
 long VirtualMachine::getLongVariable(int index)
@@ -186,7 +188,7 @@ long VirtualMachine::getLongVariable(const char *id)
 
 long VirtualMachine::getLongVariable(int index, TES3::Reference& reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment) {
 		return attachment->scriptData->longVarValues[index];
 	}
@@ -220,7 +222,7 @@ void VirtualMachine::setLongVariable(const char *id, long value)
 
 void VirtualMachine::setLongVariable(int index, long value, TES3::Reference &reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment == NULL) {
 		return;
 	}
@@ -253,7 +255,7 @@ short VirtualMachine::getShortVariable(const char *id)
 
 short VirtualMachine::getShortVariable(int index, TES3::Reference& reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment) {
 		return attachment->scriptData->shortVarValues[index];
 	}
@@ -287,7 +289,7 @@ void VirtualMachine::setShortVariable(const char *id, short value)
 
 void VirtualMachine::setShortVariable(int index, short value, TES3::Reference &reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment == NULL) {
 		return;
 	}
@@ -320,7 +322,7 @@ float VirtualMachine::getFloatVariable(const char *id)
 
 float VirtualMachine::getFloatVariable(int index, TES3::Reference& reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment) {
 		return attachment->scriptData->floatVarValues[index];
 	}
@@ -354,7 +356,7 @@ void VirtualMachine::setFloatVariable(const char *id, float value)
 
 void VirtualMachine::setFloatVariable(int index, float value, TES3::Reference &reference)
 {
-	auto attachment = tes3::getAttachedItemDataNode(&reference);
+	auto attachment = reference.getAttachedItemData();
 	if (attachment == NULL) {
 		return;
 	}
@@ -369,7 +371,7 @@ void VirtualMachine::setFloatVariable(int index, float value, TES3::Reference &r
 
 long VirtualMachine::getLongGlobal(const char *id)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -387,7 +389,7 @@ long VirtualMachine::getLongGlobal(const char *id)
 
 void VirtualMachine::setLongGlobal(const char *id, long value)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -406,7 +408,7 @@ void VirtualMachine::setLongGlobal(const char *id, long value)
 
 short VirtualMachine::getShortGlobal(const char *id)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -424,7 +426,7 @@ short VirtualMachine::getShortGlobal(const char *id)
 
 void VirtualMachine::setShortGlobal(const char *id, short value)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -443,7 +445,7 @@ void VirtualMachine::setShortGlobal(const char *id, short value)
 
 float VirtualMachine::getFloatGlobal(const char *id)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -461,7 +463,7 @@ float VirtualMachine::getFloatGlobal(const char *id)
 
 void VirtualMachine::setFloatGlobal(const char *id, float value)
 {
-	TES3::GlobalVariable * globalVar = tes3::getDataHandler()->nonDynamicData->findGlobalVariable(id);
+	TES3::GlobalVariable * globalVar = TES3::DataHandler::get()->nonDynamicData->findGlobalVariable(id);
 	if (globalVar == NULL) {
 #if _DEBUG
 		mwse::log::getLog() << "Could not find global variable '" << id << "'." << std::endl;
@@ -576,6 +578,12 @@ mwseString& VirtualMachine::getString(long fromStack)	//ask grant, need a '*' or
 	else if (mwse::string::store::exists(fromStack))
 	{
 		return mwse::string::store::get(fromStack);
+	}
+
+	// If it's not in storage, but is probably not a char*, return an empty string and log a message.
+	else if (fromStack < 0x3F0000) {
+		mwse::log::getLog() << "ERROR: Script '" << script->getObjectID() << "' in game file '" << (script->sourceMod != nullptr ? script->sourceMod->filename : "{N/A}") << "' contained garbage string reference! String references cannot be stored across saves." << std::endl;
+		return mwse::string::store::create("");
 	}
 
 	// Otherwise, assume it's a char*, though we should never hit this case.

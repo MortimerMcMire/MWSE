@@ -1,8 +1,11 @@
 #pragma once
 
-#include "NIDefines.h"
 #include "TES3Defines.h"
 
+#include "NIDefines.h"
+#include "NIPointer.h"
+
+#define NOMINMAX
 #include <Windows.h>
 
 namespace TES3 {
@@ -58,12 +61,12 @@ namespace TES3 {
 		int unknown_0x90;
 		int unknown_0x94;
 		void * unknown_0x98; // List?
-		NI::Node * worldRoot; // 0x9C
+		NI::Pointer<NI::Node> worldRoot; // 0x9C
 		int unknown_0xA0;
 		int unknown_0xA4;
 		int unknown_0xA8;
 		int unknown_0xAC;
-		int unknown_0xB0;
+		NI::Pointer<NI::Property> wireframeProperty; // 0xB0
 		int unknown_0xB4;
 		int unknown_0xB8;
 		int unknown_0xBC;
@@ -86,6 +89,16 @@ namespace TES3 {
 		int unknown_0x108;
 		char unknown_0x10C;
 		char unknown_0x10D[3]; // Padding.
+
+		// Get singleton.
+		_declspec (dllexport) static Game * get();
+
+		//
+		// Other related this-call functions.
+		//
+
+		bool initialize();
+
 	};
 	static_assert(sizeof(Game) == 0x110, "TES3::Game failed size validation");
 }

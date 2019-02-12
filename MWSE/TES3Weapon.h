@@ -28,7 +28,7 @@ namespace TES3 {
 	}
 
 	struct Weapon : Item {
-		Iterator<void> stolenList; // 0x30
+		Iterator<TES3::BaseObject> stolenList; // 0x30
 		char * name; // 0x44
 		Script * script; // 0x48
 		char * model; // 0x4C
@@ -58,6 +58,7 @@ namespace TES3 {
 		bool isMelee();
 		bool isRanged();
 		bool isAmmo();
+		bool hasDurability();
 	};
 	static_assert(sizeof(Weapon) == 0x78, "TES3::Weapon failed size validation");
 }

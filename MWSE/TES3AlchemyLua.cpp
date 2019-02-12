@@ -18,7 +18,7 @@ namespace mwse {
 
 			// Do we already have an object of this ID?
 			std::string id = getOptionalParam<std::string>(params, "id", "");
-			if (!id.empty() && tes3::getDataHandler()->nonDynamicData->resolveObject(id.c_str()) != NULL) {
+			if (!id.empty() && TES3::DataHandler::get()->nonDynamicData->resolveObject(id.c_str()) != NULL) {
 				return NULL;
 			}
 
@@ -42,7 +42,7 @@ namespace mwse {
 			}
 
 			// Set model.
-			std::string model = getOptionalParam<std::string>(params, "model", "m\\Misc_Potion_Bargain_01.nif");
+			std::string model = getOptionalParam<std::string>(params, "mesh", "m\\Misc_Potion_Bargain_01.nif");
 			alchemy->setModelPath(model.c_str());
 
 			// Set texture.
@@ -85,7 +85,7 @@ namespace mwse {
 			}
 
 			// We have our alchemy object. But is it unique?
-			for (TES3::Alchemy* testObject = reinterpret_cast<TES3::Alchemy*>(tes3::getDataHandler()->nonDynamicData->list->head);
+			for (TES3::Alchemy* testObject = reinterpret_cast<TES3::Alchemy*>(TES3::DataHandler::get()->nonDynamicData->list->head);
 				testObject != NULL;
 				testObject = reinterpret_cast<TES3::Alchemy*>(testObject->nextInCollection)) {
 				// We only care about alchemy objects.
@@ -105,7 +105,7 @@ namespace mwse {
 				}
 
 				// Check effects.
-				if (!tes3::effectsMatch(alchemy->effects, testObject->effects)) {
+				if (!alchemy->effectsMatchWith(testObject)) {
 					continue;
 				}
 
@@ -135,7 +135,7 @@ namespace mwse {
 			}
 
 			// All good? Add and return the object.
-			if (!tes3::getDataHandler()->nonDynamicData->addNewObject(alchemy)) {
+			if (!TES3::DataHandler::get()->nonDynamicData->addNewObject(alchemy)) {
 				return NULL;
 			}
 			return alchemy;
@@ -170,9 +170,12 @@ namespace mwse {
 				&TES3::Alchemy::getIconPath,
 				[](TES3::Alchemy& self, const char* value) { tes3::setDataString(&self.icon, value); }
 			));
-			usertypeDefinition.set("model", sol::property(&TES3::Alchemy::getModelPath, &TES3::Alchemy::setModelPath));
+			usertypeDefinition.set("mesh", sol::property(&TES3::Alchemy::getModelPath, &TES3::Alchemy::setModelPath));
 			usertypeDefinition.set("name", sol::property(&TES3::Alchemy::getName, &TES3::Alchemy::setName));
 			usertypeDefinition.set("script", sol::property(&TES3::Alchemy::getScript));
+
+			// TODO: Deprecated. Remove before 2.1-stable.
+			usertypeDefinition.set("model", sol::property(&TES3::Alchemy::getModelPath, &TES3::Alchemy::setModelPath));
 
 			// Finish up our usertype.
 			state.set_usertype("tes3alchemy", usertypeDefinition);

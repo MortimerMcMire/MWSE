@@ -30,8 +30,8 @@ namespace TES3 {
 		const auto TES3_ui_factoryTextSelect = reinterpret_cast<TES3_UI_WidgetFactoryMethod_t>(0x64C180);
 		const auto TES3_ui_factoryVertScrollPane = reinterpret_cast<TES3_UI_WidgetFactoryMethod_t>(0x648FD0);
 
-		const auto TES3_ui_findChildElement = reinterpret_cast<Element* (__thiscall *)(Element*, UI_ID)>(0x582DE0);
-		const auto TES3_ui_getTopLevelParent = reinterpret_cast<Element* (__thiscall *)(Element*)>(0x582EF0);
+		const auto TES3_ui_findChildElement = reinterpret_cast<Element* (__thiscall *)(const Element*, UI_ID)>(0x582DE0);
+		const auto TES3_ui_getTopLevelParent = reinterpret_cast<Element* (__thiscall *)(const Element*)>(0x582EF0);
 		const auto TES3_ui_performLayout = reinterpret_cast<Element* (__thiscall *)(Element*, Boolean)>(0x583B70);
 		const auto TES3_ui_setAutoHeight = reinterpret_cast<void (__thiscall *)(Element*, Boolean)>(0x581400);
 		const auto TES3_ui_setAutoWidth = reinterpret_cast<void (__thiscall *)(Element*, Boolean)>(0x5813C0);
@@ -40,10 +40,14 @@ namespace TES3 {
 		const auto TES3_ui_updateLayout_propagateFlow = reinterpret_cast<void(__thiscall*)(Element*)>(0x584850);
 		const auto TES3_ui_updateLayoutContent = reinterpret_cast<void(__thiscall*)(Element*)>(0x583760);
 
-		const auto TES3_ui_getProperty = reinterpret_cast<void (__thiscall *)(const Element*, PropertyValue*, Property, PropertyType, const Element*, Boolean)>(0x581440);
+		const auto TES3_ui_getProperty = reinterpret_cast<PropertyValue* (__thiscall *)(const Element*, PropertyValue*, Property, PropertyType, const Element*, Boolean)>(0x581440);
 		const auto TES3_ui_getText = reinterpret_cast<const char* (__thiscall *)(const Element*)>(0x580BB0);
 		const auto TES3_ui_setProperty = reinterpret_cast<void (__thiscall *)(Element*, Property, PropertyValue, PropertyType)>(0x581F30);
-		const auto TES3_ui_setText = reinterpret_cast<void (__thiscall *)(Element*, const char*)>(0x58AD30);
+		const auto TES3_ui_setText = reinterpret_cast<void(__thiscall *)(Element*, const char*)>(0x58AD30);
+		const auto TES3_ui_setIcon = reinterpret_cast<void(__thiscall *)(Element*, const char*)>(0x58AE20);
+		const auto TES3_ui_setIconString = reinterpret_cast<void(__thiscall *)(Element*, String)>(0x58AF10);
+
+		const auto TES3_ui_updateSceneGraph = reinterpret_cast<void(__thiscall *)(Element*)>(0x587000);
 
 		//
 		// Widget creation/destruction methods
@@ -133,13 +137,13 @@ namespace TES3 {
 		// Layout methods
 		//
 
-		Element* Element::findChild(UI_ID id) {
+		Element* Element::findChild(UI_ID id) const {
 			return TES3_ui_findChildElement(this, id);
 		}
 
-		int Element::getIndexOfChild(const Element *child) {
-			const Element** it = static_cast<const Element**>(this->vectorChildren.begin);
-			const Element** end = static_cast<const Element**>(this->vectorChildren.end);
+		int Element::getIndexOfChild(const Element *child) const {
+			Element** it = vectorChildren.begin;
+			Element** end = vectorChildren.end;
 
 			for (int i = 0; it != this->vectorChildren.end; ++i, ++it) {
 				if (*it == child) {
@@ -147,6 +151,11 @@ namespace TES3 {
 				}
 			}
 			return -1;
+		}
+
+		Element* Element::getContentElement() {
+			Property shunt = getProperty(PropertyType::Property, Property::shunt_children).propertyValue;
+			return int(shunt) ? findChild(static_cast<UI_ID>(shunt)) : this;
 		}
 
 		Element* Element::getTopLevelParent() {
@@ -160,12 +169,12 @@ namespace TES3 {
 		bool Element::reorderChildren(int insertBefore, int moveFrom, int count) {
 			// Move <count> children from index <moveFrom> to index <insertBefore>
 			// Negative positions indicate distance from end, negative count moves all children after moveFrom
-			if (this->vectorChildren.begin == this->vectorChildren.end) {
+			if (vectorChildren.begin == vectorChildren.end) {
 				return false;
 			}
 
-			const Element** begin = static_cast<const Element**>(this->vectorChildren.begin);
-			const Element** end = static_cast<const Element**>(this->vectorChildren.end);
+			Element** begin = vectorChildren.begin;
+			Element** end = vectorChildren.end;
 			int childCount = int(end - begin);
 
 			// Convert negative indices to distance from end, and negative count to move all items after moveFrom
@@ -179,7 +188,7 @@ namespace TES3 {
 			}
 
 			// Copy <count> elements into a temp buffer
-			const Element** from = begin + moveFrom, ** to = begin + insertBefore;
+			Element** from = begin + moveFrom, ** to = begin + insertBefore;
 			std::vector<const Element*> temp(from, from + count);
 
 			// Slide <shift> children in-place, then write buffer into correct location
@@ -216,6 +225,10 @@ namespace TES3 {
 		//
 		// Property methods
 		//
+
+		PropertyValue* Element::getProperty(PropertyValue* propValue, Property prop, PropertyType propType, const Element* element, bool checkInherited) const {
+			return TES3_ui_getProperty(this, propValue, prop, propType, element, checkInherited);
+		}
 
 		PropertyValue Element::getProperty(PropertyType propType, Property prop) const {
 			PropertyValue v;
@@ -269,6 +282,18 @@ namespace TES3 {
 
 		void Element::setText(const char* text) {
 			TES3_ui_setText(this, text);
+		}
+
+		void Element::setIcon(const char* path) {
+			TES3_ui_setIcon(this, path);
+		}
+
+		void Element::setIcon(String path) {
+			TES3_ui_setIconString(this, path);
+		}
+
+		void Element::updateSceneGraph() {
+			TES3_ui_updateSceneGraph(this);
 		}
 
 		//

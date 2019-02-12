@@ -24,6 +24,7 @@
 #include "InstructionInterface.h"
 #include "TES3Util.h"
 
+#include "TES3ItemData.h"
 #include "TES3Reference.h"
 
 using namespace mwse;
@@ -59,12 +60,12 @@ namespace mwse
 		long value = 0;
 
 		// Get associated varnode, and the condition from it.
-		auto varNode = mwse::tes3::getAttachedItemDataNode(reference);
+		auto varNode = reference->getAttachedItemData();
 		if (varNode != NULL) {
 			value = varNode->condition;
 		}
 		else {
-			value = reference->baseObject->vTable.object->getDurability(reference->baseObject);
+			value = reference->baseObject->getDurability();
 		}
 
 		mwse::Stack::getInstance().pushLong(value);

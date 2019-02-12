@@ -19,9 +19,20 @@ namespace mwse {
 			// Allow object to be converted to strings using their object ID.
 			usertypeDefinition.set(sol::meta_function::to_string, &TES3::BaseObject::getObjectID);
 
-			// Functions exposed as read-only properties.
+			// Functions exposed as properties.
 			usertypeDefinition.set("id", sol::readonly_property(&TES3::BaseObject::getObjectID));
-			usertypeDefinition.set("sourceMod", sol::readonly_property([](TES3::BaseObject& self) { return self.sourceMod->fileName; }));
+			usertypeDefinition.set("sourceMod", sol::readonly_property(
+				[](TES3::BaseObject& self) -> const char*
+			{
+				if (self.sourceMod) {
+					return self.sourceMod->filename;
+				}
+				return nullptr;
+			}
+			));
+			usertypeDefinition.set("modified", sol::property(&TES3::BaseObject::getObjectModified, &TES3::BaseObject::setObjectModified));
+			usertypeDefinition.set("disabled", sol::readonly_property([](TES3::BaseObject& self) { return (self.objectFlags & TES3::ObjectFlag::Disabled) != 0; }));
+			usertypeDefinition.set("deleted", sol::readonly_property([](TES3::BaseObject& self) { return (self.objectFlags & TES3::ObjectFlag::Delete) != 0; }));
 		}
 
 		template <typename T>
@@ -47,6 +58,9 @@ namespace mwse {
 
 			// Basic property binding.
 			usertypeDefinition.set("boundingBox", sol::readonly_property(&TES3::PhysicalObject::boundingBox));
+
+			// Functions exposed as properties.
+			usertypeDefinition.set("stolenList", sol::readonly_property(&TES3::PhysicalObject::getStolenList));
 		}
 	}
 }

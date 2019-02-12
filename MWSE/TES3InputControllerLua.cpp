@@ -33,9 +33,9 @@ namespace mwse {
 				usertypeDefinition.set("new", sol::no_constructor);
 
 				// Basic property binding.
-				usertypeDefinition.set("x", sol::readonly_property(&DIMOUSESTATE2::lX));
-				usertypeDefinition.set("y", sol::readonly_property(&DIMOUSESTATE2::lY));
-				usertypeDefinition.set("z", sol::readonly_property(&DIMOUSESTATE2::lZ));
+				usertypeDefinition.set("x", &DIMOUSESTATE2::lX);
+				usertypeDefinition.set("y", &DIMOUSESTATE2::lY);
+				usertypeDefinition.set("z", &DIMOUSESTATE2::lZ);
 
 				// Indirect bindings to unions and arrays.
 				usertypeDefinition.set("buttons", sol::readonly_property([](DIMOUSESTATE2& self) { return std::ref(self.rgbButtons); }));
@@ -61,7 +61,9 @@ namespace mwse {
 				usertypeDefinition.set("previousKeyboardState", sol::readonly_property([](TES3::InputController& self) { return std::ref(self.previousKeyboardState); }));
 
 				// Basic function binding.
-				usertypeDefinition.set("keybindTest", &TES3::InputController::keybindTest);
+				usertypeDefinition.set("keybindTest", [](TES3::InputController& self, unsigned int key, sol::optional<unsigned int> transition) {
+					return self.keybindTest(key, transition.value_or(TES3::KeyTransition::Down));
+				});
 				usertypeDefinition.set("isKeyDown", &TES3::InputController::isKeyDown);
 				usertypeDefinition.set("isKeyPressedThisFrame", &TES3::InputController::isKeyPressedThisFrame);
 				usertypeDefinition.set("isKeyReleasedThisFrame", &TES3::InputController::isKeyReleasedThisFrame);

@@ -5,6 +5,9 @@
 #include "TES3Object.h"
 #include "TES3ReferenceList.h"
 
+#include "NIPointer.h"
+#include "NISourceTexture.h"
+
 namespace TES3 {
 	namespace CellFlag {
 		typedef unsigned int value_type;
@@ -40,6 +43,14 @@ namespace TES3 {
 	static_assert(sizeof(MapNote) == 0x10, "TES3::MapNote failed size validation");
 
 	struct Cell : BaseObject {
+		struct struct_0x84 {
+			int unknown_0x0;
+			int unknown_0x4;
+			int unknown_0x8;
+			int unknown_0xC;
+			int unknown_0x10;
+			NI::Pointer<NI::SourceTexture> texture; // 0x14
+		};
 		char * name; // 0x10
 		void * unknown_0x14;
 		CellFlag::value_type cellFlags; // 0x18
@@ -61,7 +72,7 @@ namespace TES3 {
 		Iterator<Reference> moveReferences; // 0x68
 		int unknown_0x7C;
 		int unknown_0x80;
-		int unknown_0x84;
+		struct_0x84 * unknown_0x84;
 		Iterator<MapNote> * mapNotes; // 0x88
 		void * pathGrid; // 0x8C
 		union {
@@ -73,10 +84,17 @@ namespace TES3 {
 		// Other related this-call functions.
 		//
 
+		static Cell* create();
+
 		Reference * getFirstObjectOfType(ObjectType::ObjectType, bool);
 
-		int getGridX();
-		int getGridY();
+		bool __declspec(dllexport) isInterior();
+		int __declspec(dllexport) getGridX();
+		void __declspec(dllexport) setGridX(int x);
+		int __declspec(dllexport) getGridY();
+		void __declspec(dllexport) setGridY(int y);
+
+		void setName(const char* name);
 
 		//
 		// Other getter/setter functions.

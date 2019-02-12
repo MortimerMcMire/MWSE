@@ -1,13 +1,23 @@
 #pragma once
 
+#include <stddef.h>
+#include <Windows.h>
+
 #include "NIDefines.h"
 #include "TES3Defines.h"
 #include "TES3UIDefines.h"
+#include "TES3UIVector.h"
 
 #include "TES3Collections.h"
 #include "TES3Vectors.h"
 
 namespace TES3 {
+	enum class MusicSituation : int {
+		Explore = 0,
+		Combat = 1,
+		Uninterruptible = 2
+	};
+
 	struct WorldControllerRenderCamera {
 		void * vTable;
 		NI::Object * renderer;
@@ -75,6 +85,43 @@ namespace TES3 {
 	};
 	static_assert(sizeof(MouseController) == 0x80, "TES3::MouseController failed size validation");
 
+	struct KillCounter {
+		struct Node {
+			int count; // 0x0
+			Actor * actor; // 0x4
+		};
+		int werewolfKills; // 0x0
+		int totalKills; // 0x4
+		Iterator<Node> * killedActors; // 0x8
+
+		//
+		// Custom functions.
+		//
+
+		_declspec(dllexport) void increment(MobileActor * actor);
+		_declspec(dllexport) int getKillCount(Actor * actor);
+
+	};
+	static_assert(sizeof(KillCounter) == 0xC, "TES3::KillCounter failed size validation");
+
+	struct InventoryData {
+		UI::Vector<UI::InventoryTile*> tiles; // 0x0
+		bool unknown_0x10;
+		int unknown_0x14;
+		int unknown_0x18;
+		int unknown_0x1C;
+		int unknown_0x20;
+
+		//
+		// Other related this-call functions.
+		//
+
+		_declspec(dllexport) void clearIcons(int type);
+		_declspec(dllexport) void addInventoryItems(Inventory * inventory, int type);
+
+	};
+	static_assert(sizeof(InventoryData) == 0x24, "TES3::InventoryData failed size validation");
+
 	struct WorldController {
 		int unknown_0x0;
 		int unknown_0x4;
@@ -89,7 +136,7 @@ namespace TES3 {
 		int unknown_0x28;
 		float deltaTime; // 0xC
 		int unknown_0x30;
-		void * audio; // 0x34
+		AudioController * audioController; // 0x34
 		int unknown_0x38;
 		int unknown_0x3C;
 		int unknown_0x40;
@@ -99,12 +146,12 @@ namespace TES3 {
 		MouseController * mouseController; // 0x50
 		Script * scriptGlobals; // 0x54
 		WeatherController * weatherController; // 0x58
-		int mobController; // 0x5C
-		void * stats_60;
+		MobController * mobController; // 0x5C
+		KillCounter * playerKills; // 0x60
 		void * field_64;
 		void * splashController; // 0x68
 		Iterator<Quest> * journalController; // 0x6C
-		void * spllistActiveSpells; // 0x70
+		SpellInstanceController * spellInstanceController; // 0x70
 		int unknown_0x74;
 		int viewWidth; // 0x78
 		int viewHeight; // 0x7C
@@ -126,9 +173,9 @@ namespace TES3 {
 		GlobalVariable * gvarTimescale; // 0xBC
 		GlobalVariable * gvarCharGenState; // 0xC0
 		GlobalVariable * gvarMonthsToRespawn; // 0xC4
-		int Win32_hWndParent; // 0xC8
-		int Win32_hWnd; // 0xCC
-		int Win32_hInstance; // 0xD0
+		HWND Win32_hWndParent; // 0xC8
+		HWND Win32_hWnd; // 0xCC
+		HINSTANCE Win32_hInstance; // 0xD0
 		bool flagEventMenuModeOn; // 0xD4
 		bool flagEventMenuModeOff; // 0xD5
 		bool flagMenuMode; // 0xD6
@@ -152,18 +199,18 @@ namespace TES3 {
 		int mouseSensitivity; // 0xE8
 		int horzSensitivity; // 0xEC
 		int shaderWaterReflectUpdate; // 0xF0
-		NI::Object * nodeCursor; // 0xF4
+		NI::Node * nodeCursor; // 0xF4
 		WorldControllerRenderCamera splashscreenCamera; // 0xF8
 		WorldControllerRenderCamera worldCamera; // 0x124
-		WorldControllerRenderCamera unknown_0x150;
-		WorldControllerRenderCamera unknown_0x17C;
+		WorldControllerRenderCamera armCamera; // 0x150
+		WorldControllerRenderCamera menuCamera; // 0x17C
 		WorldControllerRenderTarget characterRenderTarget; // 0x1A8
-		WorldControllerRenderTarget unknown_0x22C;
-		WorldControllerRenderCamera unknown_0x2B0;
+		WorldControllerRenderTarget mapRenderTarget; // 0x22C
+		WorldControllerRenderCamera shadowCamera; // 0x2B0
 		int unknown_0x2DC;
 		void * fogOfWarController; // 0x2E0
-		void * uiInventoryData; // 0x2E8
 		UI::MenuController * menuController; // 0x2E4
+		InventoryData * inventoryData; // 0x2E8
 		Sound * soundWeaponSwish; // 0x2EC
 		Sound * soundLightArmorHit; // 0x2F0
 		Sound * soundMediumArmorHit; // 0x2F4
@@ -189,35 +236,42 @@ namespace TES3 {
 		bool showSubtitles; // 0x344
 		int countMusicTracksBattle; // 0x348
 		int countMusicTracksExplore; // 0x34C
-		unsigned int musicState; // 0x350
-		int unknown_0x354;
-		int unknown_0x358;
-		int unknown_0x35C;
-		int unknown_0x360;
-		int unknown_0x364;
+		MusicSituation musicSituation; // 0x350
+		Fader * transitionFader; // 0x354
+		Fader * blindnessFader; // 0x358
+		Fader * sunglareFader; // 0x35C
+		Fader * hitFader; // 0x360
+		Fader * werewolfFader; // 0x364
 		int unknown_0x368;
 		int unknown_0x36C;
 		int unknown_0x370;
+
+		// Get singleton.
+		_declspec (dllexport) static WorldController * get();
 
 		//
 		// Other related this-call functions.
 		//
 
 		void mainLoopBeforeInput();
-		MobilePlayer* getMobilePlayer();
-		void playItemUpDownSound(BaseObject*, bool, Reference*);
-		float getSimulationTimestamp();
+		_declspec(dllexport) MobilePlayer* getMobilePlayer();
+		_declspec(dllexport) void playItemUpDownSound(BaseObject* item, bool pickup = false, Reference* reference = nullptr);
+		_declspec(dllexport) float getSimulationTimestamp();
 
-		unsigned short getDaysInMonth(int);
-		double getHighPrecisionSimulationTimestamp();
+		_declspec(dllexport) unsigned short getDaysInMonth(int);
+		_declspec(dllexport) double getHighPrecisionSimulationTimestamp();
 
-		//
-		// Wrapper functions for substructures that aren't figured out yet.
-		//
+		_declspec(dllexport) bool applyEnchantEffect(NI::Node* node, Enchantment * enchantment);
 
-		void removeSpellsByEffect(Reference * reference, int effectId, int percentChance);
-		void clearSpellEffect(Reference * reference, int castType, int percentChance, bool removeSpell);
+		_declspec(dllexport) void updateTiming();
 
 	};
 	static_assert(sizeof(WorldController) == 0x374, "TES3::WorldController failed size validation");
+	static_assert(offsetof(WorldController, inputController) == 0x4C, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, mobController) == 0x5C, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, gvarGameHour) == 0xA8, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, flagMenuMode) == 0xD6, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, menuController) == 0x2E4, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, globalScripts) == 0x338, "TES3::WorldController failed offset validation");
+	static_assert(offsetof(WorldController, menuController) == 0x2E4, "TES3::WorldController failed offset validation");
 }

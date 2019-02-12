@@ -88,7 +88,7 @@ local function onClickModConfigButton()
 		menu = tes3ui.createMenu({ id = UIID_mwse_modConfigMenu, dragFrame = true })
 		menu.text = "Mod Configuration"
 		menu.minWidth = 600
-		menu.minHeight = 500;
+		menu.minHeight = 500
 		menu.width = 1200
 		menu.height = 800
 		menu.positionX = menu.width / -2
@@ -97,16 +97,16 @@ local function onClickModConfigButton()
 		-- Create the left-right flow.
 		local mainHorizontalBlock = menu:createBlock({})
 		mainHorizontalBlock.flowDirection = "left_to_right"
-		mainHorizontalBlock.layoutWidthFraction = 1.0
-		mainHorizontalBlock.layoutHeightFraction = 1.0
+		mainHorizontalBlock.widthProportional = 1.0
+		mainHorizontalBlock.heightProportional = 1.0
 
 		-- Create the mod list.
 		local modList = mainHorizontalBlock:createVerticalScrollPane({})
 		modList.width = 250
 		modList.minWidth = 250
 		modList.maxWidth = 250
-		modList.layoutWidthFraction = -1.0
-		modList.layoutHeightFraction = 1.0
+		modList.widthProportional = -1.0
+		modList.heightProportional = 1.0
 
 		-- Get a sorted list of mods.
 		local sortedConfigModNames = {}
@@ -129,23 +129,29 @@ local function onClickModConfigButton()
 		-- Create container for mod content. This will be deleted whenever the pane is reloaded.
 		modConfigContainer = mainHorizontalBlock:createBlock({})
 		modConfigContainer.flowDirection = "top_to_bottom"
-		modConfigContainer.layoutWidthFraction = 1.0
-		modConfigContainer.layoutHeightFraction = 1.0
+		modConfigContainer.widthProportional = 1.0
+		modConfigContainer.heightProportional = 1.0
 		modConfigContainer.paddingLeft = 4
 
+		local containerPane = modConfigContainer:createThinBorder{}
+		containerPane.widthProportional = 1.0
+		containerPane.heightProportional = 1.0
+		containerPane.paddingAllSides = 12
+		containerPane.flowDirection = "top_to_bottom"
+
 		-- Splash screen.
-		local splash = modConfigContainer:createImage({ path = "textures/mwse/menu_modconfig_splash.tga" })
-		splash.layoutOriginFractionX = 0.5
+		local splash = containerPane:createImage({ path = "textures/mwse/menu_modconfig_splash.tga" })
+		splash.absolutePosAlignX = 0.5
 		splash.borderTop = 25
 
 		-- Create a link back to the website.
-		local site = modConfigContainer:createLabel({ text = "mwse.readthedocs.io" })
-		site.layoutOriginFractionX = 0.5
-		site.color = { 112 / 255, 126 / 255, 207 / 255 }
+		local site = containerPane:createLabel({ text = "mwse.readthedocs.io" })
+		site.absolutePosAlignX = 0.5
+		site.color = tes3ui.getPalette("link_color")
 		site:register("mouseClick", function()
 			tes3.messageBox({
 				message = "Open web browser?",
-				buttons = { tes3.getGMST(tes3.gmst.sYes).value, tes3.getGMST(tes3.gmst.sNo).value },
+				buttons = { tes3.findGMST(tes3.gmst.sYes).value, tes3.findGMST(tes3.gmst.sNo).value },
 				callback = function(e)
 					if (e.button == 0) then
 						os.execute("start http://mwse.readthedocs.io")
@@ -156,12 +162,12 @@ local function onClickModConfigButton()
 
 		-- Create bottom button block.
 		local bottomBlock = menu:createBlock{}
-		bottomBlock.layoutWidthFraction = 1.0
+		bottomBlock.widthProportional = 1.0
 		bottomBlock.autoHeight = true
-		bottomBlock.alignX = 1.0
+		bottomBlock.childAlignX = 1.0
 
 		-- Add a close button to the bottom block.
-		local closeButton = bottomBlock:createButton{ text = tes3.getGMST(tes3.gmst.sClose).value }
+		local closeButton = bottomBlock:createButton{ text = tes3.findGMST(tes3.gmst.sClose).value }
 		closeButton:register("mouseClick", onClickCloseButton)
 
 		-- Cause the menu to refresh itself.
@@ -184,7 +190,7 @@ end
 -- Get the number of mods that aren't hidden.
 local function getActiveModConfigCount()
 	local count = 0
-	for name, package in pairs(configMods) do
+	for _, package in pairs(configMods) do
 		-- Allow package.hidden to be set to prevent it from showing up in the list.
 		if (not package.hidden) then
 			count = count + 1
@@ -211,8 +217,12 @@ local function onCreatedMenuOptions(e)
 	local buttonContainer = creditsButton.parent
 
 	local button = buttonContainer:createImageButton({
+		id = tes3ui.registerID("MenuOptions_MCM_container"),
+		idleId = tes3ui.registerID("MenuOptions_MCMidlebutton"),
 		idle = "textures/mwse/menu_modconfig.dds",
+		overId = tes3ui.registerID("MenuOptions_MCMoverbutton"),
 		over = "textures/mwse/menu_modconfig_over.dds",
+		pressedId = tes3ui.registerID("MenuOptions_MCMpressedbutton"),
 		pressed = "textures/mwse/menu_modconfig_pressed.dds",
 	})
 	button.height = 50

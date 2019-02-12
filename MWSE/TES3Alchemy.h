@@ -18,7 +18,7 @@ namespace TES3 {
 	}
 
 	struct Alchemy : Item {
-		Iterator<void> stolenList; // 0x30
+		Iterator<TES3::BaseObject> stolenList; // 0x30
 		char * name; // 0x44
 		Script * script; // 0x48
 		char * model; // 0x4C
@@ -27,6 +27,14 @@ namespace TES3 {
 		short value; // 0x58
 		Effect effects[8]; // 0x5C
 		AlchemyFlag::value_type flags; // 0x011C
+
+		//
+		// Custom functions.
+		//
+
+		size_t getActiveEffectCount();
+		bool effectsMatchWith(Alchemy * other);
+
 	};
 	static_assert(sizeof(Alchemy) == 0x120, "TES3::Alchemy failed size validation");
 }

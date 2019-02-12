@@ -1,21 +1,23 @@
 #include "sol.hpp"
-#include "LuaManager.h"
 
+#include "LuaManager.h"
+#include "LuaSpellCastEvent.h"
+
+#include "TES3Reference.h"
 #include "TES3Spell.h"
 #include "TES3Util.h"
 
 namespace TES3 {
-	const auto TES3_Spell_calculateCastChance = reinterpret_cast<float(__thiscall *)(Spell*, MobileActor*, bool, int*)>(0x4AA950);
-
 	float Spell::calculateCastChance(Reference* caster, bool checkMagicka, int* weakestSchoolId) {
-		MobileActor* mobileCaster = mwse::tes3::getAttachedMobileActor(caster);
-		if (mobileCaster == NULL) {
-			return 0.0f;
+		MobileActor* mobileCaster = nullptr;
+		if (caster) {
+			mobileCaster = caster->getAttachedMobileActor();
 		}
 
 		return calculateCastChance(mobileCaster, checkMagicka, weakestSchoolId);
 	}
 
+	const auto TES3_Spell_calculateCastChance = reinterpret_cast<float(__thiscall *)(Spell*, MobileActor*, bool, int*)>(0x4AA950);
 	float Spell::calculateCastChance(MobileActor* caster, bool checkMagicka, int* weakestSchoolId) {
 		return TES3_Spell_calculateCastChance(this, caster, checkMagicka, weakestSchoolId);
 	}
@@ -35,5 +37,15 @@ namespace TES3 {
 		}
 
 		return castChance;
+	}
+
+	size_t Spell::getActiveEffectCount() {
+		size_t count = 0;
+		for (size_t i = 0; i < 8; i++) {
+			if (effects[i].effectID != TES3::EffectID::None) {
+				count++;
+			}
+		}
+		return count;
 	}
 }

@@ -1,12 +1,44 @@
 #include "TES3Object.h"
 
+#include "TES3Actor.h"
+#include "TES3Reference.h"
+
 namespace TES3 {
-	int BaseObject::setObjectModified(unsigned char modified) {
-		return vTable.base->setObjectModified(this, modified);
+	bool BaseObject::getObjectModified() {
+		return (objectFlags & TES3::ObjectFlag::Modified);
+	}
+
+	void BaseObject::setObjectModified(bool modified) {
+		vTable.base->setObjectModified(this, modified);
 	}
 
 	char* BaseObject::getObjectID() {
 		return vTable.base->getObjectID(this);
+	}
+
+	BaseObject * BaseObject::getBaseObject() {
+		BaseObject * object = this;
+
+		if (object->objectType == ObjectType::Reference) {
+			object = static_cast<Reference*>(object)->baseObject;
+		}
+
+		if (object->isActor() && static_cast<Actor*>(object)->isClone()) {
+			object = static_cast<Actor*>(object)->getBaseActor();
+		}
+
+		return object;
+	}
+
+	bool BaseObject::isActor() {
+		switch (objectType) {
+		case TES3::ObjectType::Container:
+		case TES3::ObjectType::Creature:
+		case TES3::ObjectType::NPC:
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	void Object::setID(const char* id) {
@@ -177,5 +209,21 @@ namespace TES3 {
 		vTable.object->setScale(this, value, cap);
 	}
 
+	Object * Object::skipDeletedObjects() {
+		TES3::Object * object = this;
+		while (object && (object->objectFlags & TES3::ObjectFlag::Delete) == TES3::ObjectFlag::Delete)
+		{
+			object = object->nextInCollection;
+		}
+		return object;
+	}
+
+	//
+	// PhysicalObject
+	//
+
+	Iterator<BaseObject> * PhysicalObject::getStolenList() {
+		return vTable.physical->getStolenList(this);
+	}
 
 }

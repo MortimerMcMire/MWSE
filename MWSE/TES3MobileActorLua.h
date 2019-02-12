@@ -3,6 +3,7 @@
 #include "TES3MobileObjectLua.h"
 
 #include "TES3ActorAnimationData.h"
+#include "TES3AIData.h"
 #include "TES3Cell.h"
 
 namespace mwse {
@@ -15,8 +16,9 @@ namespace mwse {
 			usertypeDefinition.set("actionBeforeCombat", sol::readonly_property(&TES3::MobileActor::actionBeforeCombat));
 			usertypeDefinition.set("actionData", sol::readonly_property(&TES3::MobileActor::actionData));
 			usertypeDefinition.set("activeMagicEffectCount", sol::readonly_property(&TES3::MobileActor::activeMagicEffectCount));
-			//usertypeDefinition.set("activeMagicEffects", sol::readonly_property(&TES3::MobileActor::activeMagicEffects));
+			usertypeDefinition.set("activeMagicEffects", sol::readonly_property(&TES3::MobileActor::activeMagicEffects));
 			usertypeDefinition.set("actorType", sol::readonly_property(&TES3::MobileActor::actorType));
+			usertypeDefinition.set("aiData", sol::readonly_property(&TES3::MobileActor::aiData));
 			usertypeDefinition.set("alarm", &TES3::MobileActor::alarm);
 			usertypeDefinition.set("barterGold", &TES3::MobileActor::barterGold);
 			usertypeDefinition.set("collidingReference", sol::readonly_property(&TES3::MobileActor::collidingReference));
@@ -176,19 +178,58 @@ namespace mwse {
 			));
 
 			// Provide some friendly exposure for movement flags.
-			usertypeDefinition.set("isFlying", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Flying) != 0; }));
-			usertypeDefinition.set("isJumping", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Jumping) != 0; }));
-			usertypeDefinition.set("isMovingBack", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Back) != 0; }));
-			usertypeDefinition.set("isMovingForward", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Forward) != 0; }));
-			usertypeDefinition.set("isMovingLeft", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Left) != 0; }));
-			usertypeDefinition.set("isMovingRight", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Right) != 0; }));
-			usertypeDefinition.set("isRunning", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Running) != 0; }));
-			usertypeDefinition.set("isSneaking", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Sneaking) != 0; }));
-			usertypeDefinition.set("isStartingJump", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Jumped) != 0; }));
-			usertypeDefinition.set("isSwimming", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Swimming) != 0; }));
-			usertypeDefinition.set("isTurningLeft", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::TurnLeft) != 0; }));
-			usertypeDefinition.set("isTurningRight", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::TurnRight) != 0; }));
-			usertypeDefinition.set("isWalking", sol::readonly_property([](TES3::MobileActor& self) { return (self.movementFlags & TES3::ActorMovement::Walking) != 0; }));
+			usertypeDefinition.set("isFlying", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Flying)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Flying, state); }
+			));
+			usertypeDefinition.set("isJumping", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Jumping)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Jumping, state); }
+			));
+			usertypeDefinition.set("isMovingBack", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Back)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Back, state); }
+			));
+			usertypeDefinition.set("isMovingForward", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Forward)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Forward, state); }
+			));
+			usertypeDefinition.set("isMovingLeft", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Left)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Left, state); }
+			));
+			usertypeDefinition.set("isMovingRight", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Right)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Right, state); }
+			));
+			usertypeDefinition.set("isRunning", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Running)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Running, state); }
+			));
+			usertypeDefinition.set("isSneaking", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Sneaking)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Sneaking, state); }
+			));
+			usertypeDefinition.set("isStartingJump", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Jumped)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Jumped, state); }
+			));
+			usertypeDefinition.set("isSwimming", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Swimming)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Swimming, state); }
+			));
+			usertypeDefinition.set("isTurningLeft", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::TurnLeft)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::TurnLeft, state); }
+			));
+			usertypeDefinition.set("isTurningRight", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::TurnRight)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::TurnRight, state); }
+			));
+			usertypeDefinition.set("isWalking", sol::property(
+				[](TES3::MobileActor& self) { return (self.getMobileActorMovementFlag(TES3::ActorMovement::Walking)); },
+				[](TES3::MobileActor& self, bool state) { self.setMobileActorMovementFlag(TES3::ActorMovement::Walking, state); }
+			));
 
 			// Basic function binding.
 			usertypeDefinition.set("applyHealthDamage", &TES3::MobileActor::applyHealthDamage);
@@ -197,9 +238,26 @@ namespace mwse {
 			usertypeDefinition.set("startCombat", &TES3::MobileActor::startCombat);
 			usertypeDefinition.set("stopCombat", &TES3::MobileActor::stopCombat);
 
+			// Provide single function for isAffectedByAlchemy, etc.
+			usertypeDefinition.set("isAffectedByObject", [](TES3::MobileActor& self, sol::object param) {
+				if (param.is<TES3::Alchemy>()) {
+					return self.isAffectedByAlchemy(param.as<TES3::Alchemy*>());
+				}
+				else if (param.is<TES3::Enchantment>()) {
+					return self.isAffectedByEnchantment(param.as<TES3::Enchantment*>());
+				}
+				else if (param.is<TES3::Spell>()) {
+					return self.isAffectedBySpell(param.as<TES3::Spell*>());
+				}
+
+				return false;
+			});
+
 			// Functions exposed as properties.
 			usertypeDefinition.set("cell", sol::property(&TES3::MobileActor::getCell));
 			usertypeDefinition.set("hasFreeAction", sol::property(&TES3::MobileActor::hasFreeAction));
 		}
+
+		void bindTES3MobileActor();
 	}
 }

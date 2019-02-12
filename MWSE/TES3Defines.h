@@ -1,20 +1,32 @@
 #pragma once
 
 namespace TES3 {
-	struct Activator;
 	struct ActionAttachment;
 	struct ActionData;
+	struct Activator;
 	struct Actor;
 	struct ActorAnimationData;
 	struct ActorVirtualTable;
 	struct AIConfig;
+	struct AIData;
+	struct AIPackage;
+	struct AIPackageActivate;
+	struct AIPackageConfig;
+	struct AIPackageEscort;
+	struct AIPackageFollow;
+	struct AIPackageTravel;
+	struct AIPackageWander;
 	struct Alchemy;
+	struct AnimationData;
+	struct AnimationGroup;
 	struct Apparatus;
 	struct Armor;
+	struct ArmorSlotData;
 	struct Attachment;
+	struct AudioController;
 	struct BaseObject;
 	struct BaseObjectVirtualTable;
-	struct Bodypart;
+	struct BodyPart;
 	struct Book;
 	struct BoundingBox;
 	struct Cell;
@@ -26,6 +38,8 @@ namespace TES3 {
 	struct ContainerInstance;
 	struct Creature;
 	struct CreatureInstance;
+	struct CrimeEvent;
+	struct CrimeTree;
 	struct DataHandler;
 	struct Dialogue;
 	struct DialogueConditional;
@@ -35,6 +49,7 @@ namespace TES3 {
 	struct Enchantment;
 	struct EquipmentStack;
 	struct Faction;
+	struct Fader;
 	struct Game;
 	struct GameFile;
 	struct GameSetting;
@@ -48,6 +63,8 @@ namespace TES3 {
 	struct Item;
 	struct ItemData;
 	struct ItemStack;
+	struct Land;
+	struct LandTexture;
 	struct LeveledCreature;
 	struct LeveledItem;
 	struct LeveledListNode;
@@ -55,9 +72,11 @@ namespace TES3 {
 	struct LockAttachmentNode;
 	struct Lockpick;
 	struct MagicEffectInstance;
+	struct MagicSourceCombo;
 	struct MagicSourceInstance;
 	struct MapNote;
 	struct Misc;
+	struct MobController;
 	struct MobileActor;
 	struct MobileCreature;
 	struct MobileNPC;
@@ -71,6 +90,7 @@ namespace TES3 {
 	struct ObjectVirtualTable;
 	struct OwnershipAttachmentNode;
 	struct PhysicalObject;
+	struct PhysicalObjectVirtualTable;
 	struct PlayerAnimationData;
 	struct PlayerBounty;
 	struct Probe;
@@ -82,16 +102,22 @@ namespace TES3 {
 	struct RegionSound;
 	struct RepairTool;
 	struct Script;
+	struct ScriptCompiler;
 	struct ScriptVariables;
+	struct SkillStatistic;
+	struct SoulGemData;
 	struct Sound;
+	struct SoundBuffer;
 	struct SoundGenerator;
 	struct Spell;
+	struct SpellInstanceController;
 	struct SpellList;
 	struct StartScript;
 	struct Static;
 	struct Statistic;
-	struct SkillStatistic;
+	struct TravelDestination;
 	struct Weapon;
+	struct WearablePart;
 	struct Weather;
 	struct WeatherAsh;
 	struct WeatherBlight;
@@ -111,7 +137,6 @@ namespace TES3 {
 		struct InventoryTile;
 		struct String;
 		struct Tree;
-		struct Vector;
 	}
 
 }

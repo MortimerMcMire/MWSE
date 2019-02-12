@@ -7,7 +7,7 @@
 
 namespace TES3 {
 	struct Book : Item {
-		Iterator<void> stolenList; // 0x30
+		Iterator<TES3::BaseObject> stolenList; // 0x30
 		char * name; // 0x44
 		Script * script; // 0x48
 		char * model; // 0x4C
@@ -24,7 +24,7 @@ namespace TES3 {
 		// Other related this-call functions.
 		//
 
-		char* getBookText();
+		const char* getBookText();
 
 	};
 	static_assert(sizeof(Book) == 0x70, "TES3::Book failed size validation");

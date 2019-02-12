@@ -15,6 +15,7 @@ namespace TES3 {
 
 	namespace ObjectType {
 		enum ObjectType {
+			Invalid = 0,
 			Activator = 'ITCA',
 			Alchemy = 'HCLA',
 			Ammo = 'OMMA',
@@ -82,6 +83,7 @@ namespace TES3 {
 			Delete = 0x20,
 			Persistent = 0x400,
 			Disabled = 0x800,
+			SelectedByConsole = 0x1000,
 			EmptyInventory = 0x2000
 		};
 
@@ -91,6 +93,7 @@ namespace TES3 {
 			DeleteBit = 5,
 			PersistentBit = 10,
 			DisabledBit = 11,
+			SelectedByConsoleBit = 12,
 			EmptyInventoryBit = 13
 		};
 	}
@@ -105,7 +108,7 @@ namespace TES3 {
 		int (__thiscall * saveRecordSpecific)(BaseObject*, int); // 0x8
 		int (__thiscall * loadObject)(BaseObject*, int); // 0xC
 		int (__thiscall * saveObject)(BaseObject*, int); // 0x10
-		int (__thiscall * setObjectModified)(BaseObject*, unsigned char); // 0x14
+		void (__thiscall * setObjectModified)(BaseObject*, bool); // 0x14
 		int (__thiscall * setObjectFlag40)(BaseObject*, unsigned char); // 0x18
 		void * unknown_0x1C;
 		char * (__thiscall * getObjectID)(BaseObject*); // 0x20
@@ -190,6 +193,7 @@ namespace TES3 {
 		union {
 			BaseObjectVirtualTable * base;
 			ObjectVirtualTable * object;
+			PhysicalObjectVirtualTable * physical;
 			ActorVirtualTable * actor;
 		} vTable; // 0x0
 		ObjectType::ObjectType objectType; // 0x4
@@ -200,8 +204,17 @@ namespace TES3 {
 		// Function wrappers for our virtual table.
 		//
 
-		int setObjectModified(unsigned char);
-		char * getObjectID();
+		__declspec(dllexport) bool getObjectModified();
+		__declspec(dllexport) void setObjectModified(bool);
+		__declspec(dllexport) char * getObjectID();
+
+		//
+		// Custom functions.
+		//
+
+		BaseObject * getBaseObject();
+
+		bool isActor();
 
 	};
 	static_assert(sizeof(BaseObject) == 0x10, "TES3::BaseObject failed size validation");
@@ -221,54 +234,74 @@ namespace TES3 {
 		// Function wrappers for our virtual table.
 		//
 
-		void setID(const char*);
-		char * getName();
-		char * getIconPath();
-		char * getModelPath();
-		Script * getScript();
-		char * getRaceID();
-		char * getClassID();
-		char * getBirthsignID();
-		Race * getRace();
-		Class * getClass();
-		Faction * getFaction();
-		bool isFemale();
-		int getFactionRank();
-		int getLevel();
-		signed char setDispositionRaw(signed char);
-		int modDisposition(signed int);
-		int getFactionIndex();
-		signed char setFactionIndex(signed char);
-		int getDispositionRaw();
-		signed char modFactionIndex(signed char);
-		int getType();
-		char * getTypeName();
-		float getWeight();
-		int getValue();
-		void setDurability(int);
-		int getDurability();
-		int getMagicka();
-		int getFatigue();
-		float getQuality();
-		bool isLeftPartOfPair();
-		bool isEssential();
-		bool isRespawn();
-		int getUses();
-		Enchantment * getEnchantment();
-		Enchantment * setEnchantment(Enchantment*);
-		AIConfig * getAIConfig();
-		bool getAutoCalc();
-		void setAutoCalc(bool);
-		void setModelPath(const char*);
-		void setName(const char*);
-		float getScale();
-		void setScale(float value, bool cap = false);
+		__declspec(dllexport) void setID(const char*);
+		__declspec(dllexport) char * getName();
+		__declspec(dllexport) char * getIconPath();
+		__declspec(dllexport) char * getModelPath();
+		__declspec(dllexport) Script * getScript();
+		__declspec(dllexport) char * getRaceID();
+		__declspec(dllexport) char * getClassID();
+		__declspec(dllexport) char * getBirthsignID();
+		__declspec(dllexport) Race * getRace();
+		__declspec(dllexport) Class * getClass();
+		__declspec(dllexport) Faction * getFaction();
+		__declspec(dllexport) bool isFemale();
+		__declspec(dllexport) int getFactionRank();
+		__declspec(dllexport) int getLevel();
+		__declspec(dllexport) signed char setDispositionRaw(signed char);
+		__declspec(dllexport) int modDisposition(signed int);
+		__declspec(dllexport) int getFactionIndex();
+		__declspec(dllexport) signed char setFactionIndex(signed char);
+		__declspec(dllexport) int getDispositionRaw();
+		__declspec(dllexport) signed char modFactionIndex(signed char);
+		__declspec(dllexport) int getType();
+		__declspec(dllexport) char * getTypeName();
+		__declspec(dllexport) float getWeight();
+		__declspec(dllexport) int getValue();
+		__declspec(dllexport) void setDurability(int);
+		__declspec(dllexport) int getDurability();
+		__declspec(dllexport) int getMagicka();
+		__declspec(dllexport) int getFatigue();
+		__declspec(dllexport) float getQuality();
+		__declspec(dllexport) bool isLeftPartOfPair();
+		__declspec(dllexport) bool isEssential();
+		__declspec(dllexport) bool isRespawn();
+		__declspec(dllexport) int getUses();
+		__declspec(dllexport) Enchantment * getEnchantment();
+		__declspec(dllexport) Enchantment * setEnchantment(Enchantment*);
+		__declspec(dllexport) AIConfig * getAIConfig();
+		__declspec(dllexport) bool getAutoCalc();
+		__declspec(dllexport) void setAutoCalc(bool);
+		__declspec(dllexport) void setModelPath(const char*);
+		__declspec(dllexport) void setName(const char*);
+		__declspec(dllexport) float getScale();
+		__declspec(dllexport) void setScale(float value, bool cap = false);
+
+		//
+		// Custom functions.
+		//
+
+		__declspec(dllexport) Object * skipDeletedObjects();
+
 	};
 	static_assert(sizeof(Object) == 0x28, "TES3::Object failed size validation");
+
+	struct PhysicalObjectVirtualTable : ObjectVirtualTable {
+		void * unknown_0x13C;
+		void * unknown_0x140;
+		Iterator<BaseObject> * (__thiscall * getStolenList)(PhysicalObject*); // 0x144
+	};
 
 	struct PhysicalObject : Object {
 		BoundingBox * boundingBox; // 0x28
 		char * objectID; // 0x2C
+
+		//
+		// Function wrappers for our virtual table.
+		//
+
+		__declspec(dllexport) Iterator<BaseObject> * getStolenList();
+
 	};
 	static_assert(sizeof(PhysicalObject) == 0x30, "TES3::PhysicalObject failed size validation");
 }

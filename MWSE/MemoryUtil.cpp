@@ -130,6 +130,30 @@ namespace mwse {
 		return true;
 	}
 
+	bool genPushEnforced(DWORD address, BYTE value) {
+		// Make sure we're doing a push already.
+		BYTE instruction = *reinterpret_cast<BYTE*>(address);
+		if (instruction != 0x6A) {
+#if _DEBUG
+			log::getLog() << "[MemoryUtil] Skipping call generation at 0x" << std::hex << address << ". Expected 0x6A, found instruction: 0x" << (int)instruction << "." << std::endl;
+#endif
+			return false;
+		}
+
+		// Unprotect memory.
+		DWORD oldProtect;
+		VirtualProtect((DWORD*)address, 0x2, PAGE_READWRITE, &oldProtect);
+
+		// Create our call.
+		MemAccess<BYTE>::Set(address, 0x6A);
+		MemAccess<BYTE>::Set(address + 1, value);
+
+		// Protect memory again.
+		VirtualProtect((DWORD*)address, 0x2, oldProtect, &oldProtect);
+
+		return true;
+	}
+
 	bool genPushEnforced(DWORD address, DWORD value) {
 		// Make sure we're doing a push already.
 		BYTE instruction = *reinterpret_cast<BYTE*>(address);
@@ -193,6 +217,20 @@ namespace mwse {
 		return true;
 	}
 
+	bool __declspec(dllexport) genNOPUnprotected(DWORD address, DWORD size) {
+		// Unprotect memory.
+		DWORD oldProtect;
+		VirtualProtect((DWORD*)address, size, PAGE_READWRITE, &oldProtect);
+
+		for (DWORD i = 0; i < size; i++) {
+			genNOP(address + i);
+		}
+
+		// Protect memory again.
+		VirtualProtect((DWORD*)address, size, oldProtect, &oldProtect);
+		return true;
+	}
+
 	void writeByteUnprotected(DWORD address, BYTE value) {
 		// Unprotect memory.
 		DWORD oldProtect;
@@ -205,6 +243,7 @@ namespace mwse {
 		VirtualProtect((DWORD*)address, 0x5, oldProtect, &oldProtect);
 	}
 
+	// WARNING: If passing a function address, always use a non-static function or it will crash.
 	void writePatchCodeUnprotected(DWORD address, const BYTE* patch, DWORD size) {
 #ifdef _DEBUG
 		// Read incremental linker trampoline to find real patch
@@ -216,6 +255,17 @@ namespace mwse {
 		memmove_s((void*)address, size, patch, size);
 
 		VirtualProtect((DWORD*)address, size, oldProtect, &oldProtect);
+	}
+
+	DWORD getCallAddress(DWORD address) {
+		// Make sure we're doing a call.
+		BYTE instruction = *reinterpret_cast<BYTE*>(address);
+		if (instruction != 0xE8) {
+			return NULL;
+		}
+
+		// Read previous call address to make sure it's what we are expecting.
+		return *reinterpret_cast<DWORD*>(address + 1) + address + 0x5;
 	}
 
 }

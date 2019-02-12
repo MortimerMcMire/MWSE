@@ -7,10 +7,6 @@
 #include "TES3Vectors.h"
 
 namespace TES3 {
-	struct LuaTableAttachment : Attachment {
-		sol::table table;
-	};
-
 	struct Reference : Object {
 		PhysicalObject * baseObject; // 0x28
 		Vector3 orientation; // 0x2c
@@ -23,40 +19,57 @@ namespace TES3 {
 		// Other related this-call functions.
 		//
 
-		void activate(Reference* activator, int unknown = 1);
-		void setActionFlag(int);
-		void clearActionFlag(int);
-		bool testActionFlag(int);
-		void setActionReference(Reference*);
-		Reference * getActionReference();
+		__declspec(dllexport) void activate(Reference* activator, int unknown = 1);
+		__declspec(dllexport) void setActionFlag(int);
+		__declspec(dllexport) void clearActionFlag(int);
+		__declspec(dllexport) bool testActionFlag(int);
+		__declspec(dllexport) void setActionReference(Reference*);
+		__declspec(dllexport) Reference * getActionReference();
 
-		ItemDataAttachment* addItemDataAttachment(ItemData*);
-		Vector3* getOrientationFromAttachment();
+		__declspec(dllexport) ItemDataAttachment* addItemDataAttachment(ItemData*);
+		__declspec(dllexport) Vector3* getOrCreateOrientationFromAttachment();
+		__declspec(dllexport) Vector3* getPositionFromAttachment();
+		__declspec(dllexport) LockAttachmentNode* getOrCreateLockNode();
+		__declspec(dllexport) ScriptVariables * getScriptVariables();
+		__declspec(dllexport) void removeAttachment(TES3::Attachment * attachment);
+
+		__declspec(dllexport) void updateEquipment();
 
 		//
 		// Other utility functions.
 		//
 
-		Vector3 * getPosition();
-		void setPosition(float x, float y, float z);
-		void setPosition(Vector3* positionVec);
+		__declspec(dllexport) Vector3 * getPosition();
+		__declspec(dllexport) void setPosition(float x, float y, float z);
+		__declspec(dllexport) void setPosition(Vector3* positionVec);
 
-		Vector3 * getOrientation();
-		void setOrientation(float x, float y, float z);
-		void setOrientation(Vector3* value);
+		__declspec(dllexport) Vector3 * getOrientation();
+		__declspec(dllexport) void setOrientation(float x, float y, float z);
+		__declspec(dllexport) void setOrientation(Vector3* value);
 
-		Matrix33* updateSceneMatrix(Matrix33* matrix, bool unknown = true);
+		__declspec(dllexport) TravelDestination * setTravelDestination(Vector3 * position, Vector3 * orientation, Cell * cell = nullptr);
 
-		Inventory * getInventory();
-		Iterator<EquipmentStack> * getEquipment();
+		__declspec(dllexport) Matrix33* updateSceneMatrix(Matrix33* matrix, bool unknown = true);
 
-		bool clone();
+		__declspec(dllexport) Inventory * getInventory();
+		__declspec(dllexport) Iterator<EquipmentStack> * getEquipment();
+
+		__declspec(dllexport) bool clone();
+
+		__declspec(dllexport) bool insertAttachment(Attachment* attachment);
+		__declspec(dllexport) Attachment* getAttachment(AttachmentType::AttachmentType type);
+		__declspec(dllexport) MobileObject* getAttachedMobileObject();
+		__declspec(dllexport) MobileActor* getAttachedMobileActor();
+		__declspec(dllexport) MobileCreature* getAttachedMobileCreature();
+		__declspec(dllexport) MobileNPC* getAttachedMobileNPC();
+		__declspec(dllexport) MobileProjectile* getAttachedMobileProjectile();
+		__declspec(dllexport) ItemData* getAttachedItemData();
+		__declspec(dllexport) ItemData* getOrCreateAttachedItemData();
+		__declspec(dllexport) LockAttachmentNode* getAttachedLockNode();
 
 		//
 		// Lua interface functions.
 		//
-
-		sol::object getBaseObject();
 
 		void setPositionFromLua(sol::stack_object value);
 		void setOrientationFromLua(sol::stack_object value);

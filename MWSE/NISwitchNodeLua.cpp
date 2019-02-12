@@ -1,5 +1,7 @@
 #include "NISwitchNode.h"
 
+#include "NINodeLua.h"
+
 #include "sol.hpp"
 
 #include "LuaManager.h"
@@ -21,6 +23,7 @@ namespace mwse {
 
 			// Define inheritance structures. These must be defined in order from top to bottom. The complete chain must be defined.
 			usertypeDefinition.set(sol::base_classes, sol::bases<NI::Node, NI::AVObject, NI::ObjectNET, NI::Object>());
+			setUserdataForNINode(usertypeDefinition);
 
 			// Basic property binding.
 			usertypeDefinition.set("switchIndex", sol::property(
@@ -28,9 +31,7 @@ namespace mwse {
 				[](NI::SwitchNode& self, int index)
 			{
 				if (index < 0 || index > (self.children.filledCount-1) || self.children.storage[index] == nullptr) {
-					sol::state& state = LuaManager::getInstance().getState();
-					state["error"]("Attempted to set switchIndex beyond bounds!");
-					return;
+					throw std::exception("Attempted to set switchIndex beyond bounds!");
 				}
 				self.switchIndex = index;
 			}

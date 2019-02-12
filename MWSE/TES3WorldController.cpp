@@ -1,6 +1,11 @@
 #include "TES3WorldController.h"
 
+#include "TES3Actor.h"
 #include "TES3GlobalVariable.h"
+#include "TES3MobilePlayer.h"
+#include "TES3Reference.h"
+
+#include "TES3Util.h"
 
 #define TES3_WorldController_mainLoopBeforeInput 0x40F610
 #define TES3_WorldController_getMobilePlayer 0x40FF20
@@ -10,6 +15,81 @@
 #define TES3_Data_cumulativeDaysForMonth 0x775E58
 
 namespace TES3 {
+
+	//
+	// KillCounter
+	//
+
+	void KillCounter::increment(MobileActor * mobile) {
+		TES3::Actor * actor = static_cast<TES3::Actor*>(mobile->reference->baseObject)->getBaseActor();
+
+		// Is this actor already in the collection?
+		KillCounter::Node * node = nullptr;
+		auto itt = killedActors->head;
+		while (itt) {
+			if (itt->data->actor == actor) {
+				node = itt->data;
+				break;
+			}
+
+			itt = itt->next;
+		}
+
+		// If it isn't in the collection, create a new node and add it.
+		if (node == nullptr) {
+			node = mwse::tes3::_new<KillCounter::Node>();
+			node->count = 0;
+			node->actor = actor;
+			killedActors->addItem(node);
+		}
+
+		// Increment kills for this actor and total kills.
+		node->count++;
+		totalKills++;
+
+		// Increment werewolf kills if the player is wolfing out.
+		if (mobile->actorType == TES3::MobileActorType::NPC && TES3::WorldController::get()->getMobilePlayer()->getMobileActorFlag(TES3::MobileActorFlag::Werewolf)) {
+			werewolfKills++;
+		}
+
+		// TODO: Add back in console logging.
+	}
+
+	int KillCounter::getKillCount(Actor * actor) {
+		auto node = killedActors->head;
+		while (node) {
+			if (node->data->actor == actor) {
+				return node->data->count;
+			}
+
+			node = node->next;
+		}
+
+		return 0;
+	}
+
+	//
+	// InventoryData
+	//
+
+	const auto TES3_InventoryData_ClearIcons = reinterpret_cast<void(__thiscall*)(InventoryData *, int)>(0x632270);
+	void InventoryData::clearIcons(int type) {
+		TES3_InventoryData_ClearIcons(this, type);
+	}
+
+	const auto TES3_InventoryData_AddInventoryItems = reinterpret_cast<void(__thiscall*)(InventoryData *, Inventory *, int)>(0x633510);
+	void InventoryData::addInventoryItems(Inventory * inventory, int type) {
+		TES3_InventoryData_AddInventoryItems(this, inventory, type);
+	}
+
+	//
+	// WorldController
+	//
+
+	WorldController * WorldController::get() {
+		return *reinterpret_cast<TES3::WorldController**>(0x7C67DC);
+	}
+
 	void WorldController::mainLoopBeforeInput() {
 		reinterpret_cast<void(__thiscall *)(WorldController*)>(TES3_WorldController_mainLoopBeforeInput)(this);
 	}
@@ -34,11 +114,15 @@ namespace TES3 {
 		return (gvarYear->value * 365.0 + getDaysInMonth((int)gvarMonth->value) + gvarDay->value) * 24.0 + gvarGameHour->value;
 	}
 
-	void WorldController::removeSpellsByEffect(Reference * reference, int effectId, int percentChance) {
-		reinterpret_cast<void(__thiscall *)(void *, Reference*, int, int)>(0x455880)(spllistActiveSpells, reference, effectId, percentChance);
+	const auto TES3_WorldController_applyEnchantEffect = reinterpret_cast<bool(__thiscall*)(WorldController*, NI::Node*, Enchantment*)>(0x410B00);
+	bool WorldController::applyEnchantEffect(NI::Node* node, Enchantment * enchantment) {
+		return TES3_WorldController_applyEnchantEffect(this, node, enchantment);
 	}
 
-	void WorldController::clearSpellEffect(Reference * reference, int castType, int percentChance, bool removeSpell) {
-		reinterpret_cast<void(__thiscall *)(void *, Reference*, int, int, bool)>(0x4556C0)(spllistActiveSpells, reference, castType, percentChance, removeSpell);
+	const auto TES3_WorldController_updateTiming = reinterpret_cast<void(__thiscall*)(WorldController*)>(0x453610);
+	void WorldController::updateTiming() {
+		TES3_WorldController_updateTiming(this);
 	}
+
+
 }

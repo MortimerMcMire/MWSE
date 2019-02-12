@@ -2,11 +2,17 @@
 #include "LuaUtil.h"
 #include "LuaManager.h"
 
+#include "LuaEquipEvent.h"
+
 #include "Stack.h"
 
 #include "ScriptUtil.h"
 #include "ScriptUtilLua.h"
 
+#include "TES3Creature.h"
+#include "TES3Dialogue.h"
+#include "TES3LeveledList.h"
+#include "TES3Misc.h"
 #include "TES3Reference.h"
 #include "TES3Script.h"
 #include "TES3Spell.h"
@@ -67,7 +73,7 @@ namespace mwse {
 			state["mwscript"]["addToLevCreature"] = [](sol::optional<sol::table> params) {
 				TES3::Script* script = getOptionalParamExecutionScript(params);
 				TES3::Reference* reference = getOptionalParamExecutionReference(params);
-				TES3::BaseObject* list = getOptionalParamObject<TES3::BaseObject>(params, "list");
+				TES3::LeveledCreature* list = getOptionalParamObject<TES3::LeveledCreature>(params, "list");
 				TES3::Actor* actor = getOptionalParamObject<TES3::Actor>(params, "creature");
 				short level = getOptionalParam<double>(params, "level", 0.0);
 				if (list == NULL || actor == NULL || level <= 0) {
@@ -104,8 +110,8 @@ namespace mwse {
 			state["mwscript"]["addTopic"] = [](sol::optional<sol::table> params) {
 				TES3::Script* script = getOptionalParamExecutionScript(params);
 				TES3::Reference* reference = getOptionalParamExecutionReference(params);
-				TES3::DialogueInfo* topic = getOptionalParamTopic(params, "topic");
-				if (topic == NULL) {
+				TES3::Dialogue* topic = getOptionalParamDialogue(params, "topic");
+				if (topic == nullptr || topic->type != TES3::DialogueType::Topic) {
 					return false;
 				}
 
@@ -172,7 +178,7 @@ namespace mwse {
 
 				// Fire off the event, because script calls don't hit the same code as our hooks.
 				sol::object response = LuaManager::getInstance().triggerEvent(new event::EquipEvent(reference, item, NULL));
-				if (response != sol::nil && response.is<sol::table>()) {
+				if (response.get_type() == sol::type::table) {
 					sol::table eventData = response;
 					if (eventData["block"] == true) {
 						return false;
@@ -207,8 +213,7 @@ namespace mwse {
 					return false;
 				}
 
-				mwscript::HasItemEquipped(script, reference, item);
-				return true;
+				return mwscript::HasItemEquipped(script, reference, item);
 			};
 			state["mwscript"]["getDelete"] = [](sol::optional<sol::table> params) {
 				TES3::Script* script = getOptionalParamExecutionScript(params);

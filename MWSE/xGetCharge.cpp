@@ -24,6 +24,7 @@
 #include "InstructionInterface.h"
 #include "TES3Util.h"
 
+#include "TES3ItemData.h"
 #include "TES3Reference.h"
 #include "TES3Enchantment.h"
 
@@ -73,9 +74,9 @@ namespace mwse
 
 		// Get the charge based on the record type. If the item doesn't have a varnode,
 		// return the maximum charge from the enchantment record.
-		auto varNode = mwse::tes3::getAttachedItemDataNode(reference);
+		auto varNode = reference->getAttachedItemData();
 		if (varNode) {
-			charge = varNode->enchantData.charge;
+			charge = varNode->charge;
 		}
 		else {
 			TES3::Enchantment* enchantment = object->vTable.object->getEnchantment(object);

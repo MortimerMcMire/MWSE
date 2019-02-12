@@ -24,8 +24,10 @@
 #include "InstructionInterface.h"
 #include "TES3Util.h"
 
-#include "TES3GlobalVariable.h"
 #include "TES3Faction.h"
+#include "TES3GlobalVariable.h"
+#include "TES3ItemData.h"
+#include "TES3Reference.h"
 
 using namespace mwse;
 
@@ -55,21 +57,21 @@ namespace mwse
 		TES3::Reference* reference = virtualMachine.getReference();
 		if (reference) {
 			// Get the attached varnode as owner information.
-			auto varNode = tes3::getAttachedItemDataNode(reference);
+			auto varNode = reference->getAttachedItemData();
 			if (varNode) {
 				TES3::BaseObject* owner = varNode->owner;
 				if (owner) {
 					type = owner->objectType;
 					if (type == TES3::ObjectType::NPC) {
 						id = owner->vTable.object->getObjectID(owner);
-						if (varNode->requirement.variable) {
-							rank = mwse::string::store::getOrCreate(varNode->requirement.variable->name);
+						if (varNode->requiredVariable) {
+							rank = mwse::string::store::getOrCreate(varNode->requiredVariable->name);
 						}
 					}
 					else if (type == TES3::ObjectType::Faction) {
 						TES3::Faction * faction = reinterpret_cast<TES3::Faction*>(owner);
 						id = faction->objectID;
-						rank = varNode->requirement.rank;
+						rank = varNode->requiredRank;
 					}
 					else {
 #if _DEBUG

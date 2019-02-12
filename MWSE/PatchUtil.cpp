@@ -4,12 +4,21 @@
 #include "MemoryUtil.h"
 #include "Log.h"
 
-#include "TES3Util.h"
+#include "TES3Actor.h"
 #include "TES3DataHandler.h"
+#include "TES3GameFile.h"
 #include "TES3GameSetting.h"
-#include "TES3Script.h"
+#include "TES3Misc.h"
 #include "TES3MobilePlayer.h"
+#include "TES3Reference.h"
+#include "TES3Script.h"
+#include "TES3UIElement.h"
+#include "TES3UIInventoryTile.h"
 #include "TES3WorldController.h"
+
+#include "TES3Util.h"
+
+#include "LuaManager.h"
 
 #include <Windows.h>
 #include <Psapi.h>
@@ -46,10 +55,10 @@ namespace mwse {
 		//
 
 		void PatchUnifyAthleticsTraining() {
-			TES3::WorldController* worldController = tes3::getWorldController();
+			TES3::WorldController* worldController = TES3::WorldController::get();
 			TES3::MobilePlayer* mobilePlayer = worldController->getMobilePlayer();
 
-			TES3::Skill* athletics = &tes3::getDataHandler()->nonDynamicData->skills[TES3::SkillID::Athletics];
+			TES3::Skill* athletics = &TES3::DataHandler::get()->nonDynamicData->skills[TES3::SkillID::Athletics];
 
 			// If we're running, use the first progress.
 			if (mobilePlayer->movementFlags & TES3::ActorMovement::Running) {
@@ -67,24 +76,121 @@ namespace mwse {
 		//
 
 		void PatchUnifySneakTraining() {
-			TES3::NonDynamicData* nonDynamicData = tes3::getDataHandler()->nonDynamicData;
+			TES3::NonDynamicData* nonDynamicData = TES3::DataHandler::get()->nonDynamicData;
 
 			// Decrement sneak use delay counter.
 			*reinterpret_cast<float*>(0x7D16E0) = *reinterpret_cast<float*>(0x7D16E0) - nonDynamicData->GMSTs[TES3::GMST::fSneakUseDelay]->value.asFloat;
 
 			// Excercise sneak.
-			tes3::getWorldController()->getMobilePlayer()->exerciseSkill(TES3::SkillID::Sneak, nonDynamicData->skills[TES3::SkillID::Sneak].progressActions[0]);
+			TES3::WorldController::get()->getMobilePlayer()->exerciseSkill(TES3::SkillID::Sneak, nonDynamicData->skills[TES3::SkillID::Sneak].progressActions[0]);
 		}
 
+		//
+		// Patch: Clean up cursor behavior when alt-tabbing.
+		//
+
+		bool& TES3_WindowInFocus = *reinterpret_cast<bool*>(0x776D08);
+		int& TES3_CursorShown = *reinterpret_cast<int*>(0x776D0C);
+
+		WNDPROC TES3_DefaultWindowMessageHandler = nullptr;
+
+		LRESULT __stdcall PatchLessAggressiveCursorCapturingWindowHandle(HWND hWnd, int uMsg, WPARAM wParam, LPARAM lParam) {
+			switch (uMsg) {
+			case WM_ACTIVATE:
+			{
+				if (wParam) {
+					auto worldController = TES3::WorldController::get();
+					if (worldController) {
+						worldController->updateTiming();
+					}
+					TES3_WindowInFocus = true;
+					if (TES3_CursorShown) {
+						ShowCursor(false);
+						TES3_CursorShown = false;
+					}
+				}
+				else {
+					TES3_WindowInFocus = false;
+					if (!TES3_CursorShown) {
+						ShowCursor(true);
+						TES3_CursorShown = true;
+					}
+				}
+				return 0;
+			}
+			break;
+			case WM_NCHITTEST:
+			{
+				auto result = DefWindowProc(hWnd, uMsg, wParam, lParam);
+				if (TES3_WindowInFocus && TES3_CursorShown && result == HTCLIENT) {
+					ShowCursor(false);
+					TES3_CursorShown = false;
+				}
+				else if (TES3_WindowInFocus && !TES3_CursorShown && result != HTCLIENT) {
+					ShowCursor(true);
+					TES3_CursorShown = true;
+				}
+				return result;
+			}
+			break;
+			}
+
+			return TES3_DefaultWindowMessageHandler(hWnd, uMsg, wParam, lParam);
+		}
+
+		//
+		// Patch: Fix crash with paper doll equipping/unequipping.
+		//
+		// In this patch, the tile associated with the stack may have been deleted, but the property to the TES3::ItemData 
+		// remains. If the memory is reallocated it will fill with garbage, and cause a crash. The tile property, however,
+		// is properly deleted. So we look for that instead, and return its associated item data (which is the same value).
+		//! TODO: Find out where it's being deleted, and also delete the right property.
+		//
+
+		TES3::UI::PropertyValue* __fastcall PatchPaperdollTooltipCrashFix(TES3::UI::Element* self, DWORD _UNUSUED_, TES3::UI::PropertyValue* propValue, TES3::UI::Property prop, TES3::UI::PropertyType propType, const TES3::UI::Element* element = nullptr, bool checkInherited = false) {
+			auto tileProp = self->getProperty(TES3::UI::PropertyType::Pointer, *reinterpret_cast<TES3::UI::Property*>(0x7D3A70));
+			auto tile = reinterpret_cast<TES3::UI::InventoryTile*>(tileProp.ptrValue);
+
+			if (tile == nullptr) {
+				propValue->ptrValue = nullptr;
+			}
+			else {
+				propValue->ptrValue = tile->itemData;
+			}
+
+			return propValue;
+		}
+
+		//
 		// Install all the patches.
+		//
+
 		void installPatches() {
-			// Patch: Enable/Disable
+			// Patch: Enable/Disable.
 			genCallUnprotected(0x508FEB, reinterpret_cast<DWORD>(PatchScriptOpEnable), 0x9);
 			genCallUnprotected(0x5090DB, reinterpret_cast<DWORD>(PatchScriptOpDisable), 0x9);
 
 			// Patch: Unify athletics and sneak training.
 			genCallUnprotected(0x569EE7, reinterpret_cast<DWORD>(PatchUnifyAthleticsTraining), 0xC6);
 			genCallUnprotected(0x5683D0, reinterpret_cast<DWORD>(PatchUnifySneakTraining), 0x65);
+
+			// Patch: Crash fix for help text for paperdolls.
+			genCallEnforced(0x5CDFD0, 0x581440, reinterpret_cast<DWORD>(PatchPaperdollTooltipCrashFix));
+
+			// Patch (optional): Change window cursor behavior.
+			TES3_DefaultWindowMessageHandler = (WNDPROC)SetClassLongPtr(TES3::WorldController::get()->Win32_hWndParent, GCLP_WNDPROC, (LONG_PTR)PatchLessAggressiveCursorCapturingWindowHandle);
+			if (TES3_DefaultWindowMessageHandler == nullptr) {
+				log::getLog() << "[MWSE:Patch:Less Aggressive Cursor Capturing] ERROR: Failed to replace window handler using SetClassLongPtr." << std::endl;
+			}
+
+			// Patch: Optimize GetDeadCount and associated dialogue filtering/logic.
+			auto killCounterIncrement = &TES3::KillCounter::increment;
+			genCallEnforced(0x523D73, 0x55D820, *reinterpret_cast<DWORD*>(&killCounterIncrement));
+			auto killCounterGetCount = &TES3::KillCounter::getKillCount;
+			genCallEnforced(0x4B0B2E, 0x55D900, *reinterpret_cast<DWORD*>(&killCounterGetCount));
+			genCallEnforced(0x50AC85, 0x55D900, *reinterpret_cast<DWORD*>(&killCounterGetCount));
+			genCallEnforced(0x50ACAB, 0x55D900, *reinterpret_cast<DWORD*>(&killCounterGetCount));
+			genCallEnforced(0x745FF0, 0x55D900, *reinterpret_cast<DWORD*>(&killCounterGetCount));
 		}
 
 		//

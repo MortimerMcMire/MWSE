@@ -8,7 +8,8 @@
 #include "TES3Util.h"
 
 #include "sol.hpp"
-#include "LuaEvents.h"
+
+#include "LuaBaseEvent.h"
 
 namespace mwse {
 	namespace lua {
@@ -52,7 +53,7 @@ namespace mwse {
 
 			// Handle our button pressed callbacks. There can only be one at a time.
 			void setButtonPressedCallback(sol::optional<sol::protected_function>);
-			sol::object triggerButtonPressed();
+			void triggerButtonPressed();
 
 			// Guarded access to the userdata cache.
 			sol::object getCachedUserdata(TES3::BaseObject*);

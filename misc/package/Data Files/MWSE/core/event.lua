@@ -4,6 +4,9 @@ local generalEvents = {}
 
 local filteredEvents = {}
 
+-- Temporary hack for event priorities.
+local eventPriorities = {}
+
 local function getEventTable(eventType, filter)
 	if (filter == nil) then
 		if (generalEvents[eventType] == nil) then
@@ -21,6 +24,10 @@ local function getEventTable(eventType, filter)
 	end
 end
 
+local function eventSorter(a, b)
+	return eventPriorities[a] > eventPriorities[b]
+end
+
 function this.register(eventType, callback, options)
 	-- Validate event type.
 	if (type(eventType) ~= "string" or eventType == "") then
@@ -29,7 +36,7 @@ function this.register(eventType, callback, options)
 
 	-- Validate callback.
 	if (type(callback) ~= "function") then
-		return error("event.register: Event callback must be a valid string.")
+		return error("event.register: Event callback must be a function.")
 	end
 
 	-- Make sure options is an empty table if nothing else.
@@ -44,11 +51,36 @@ function this.register(eventType, callback, options)
 		end
 	end
 
+	-- Handle conversions of filters.
+	if (options.filter) then
+		local filterType = type(options.filter)
+		if (filterType == "userdata") then
+			-- References get converted to the base object.
+			if (options.filter.objectType == tes3.objectType.reference) then
+				options.filter = options.filter.object
+				mwse.log("Warning: Event registered to reference. Reference-type filtering was deprecated on 2018-12-15, and will be removed in future versions. Please update accordingly.")
+				debug.traceback()
+			end
+
+			-- Actors and containers get converted to their base object.
+			local baseObject = options.filter.baseObject
+			if (baseObject) then
+				options.filter = baseObject
+				mwse.log("Warning: Event registered to actor clone. Switched to base object.")
+				debug.traceback()
+			end
+		end
+	end
+
+	-- Store this callback's priority.
+	eventPriorities[callback] = options.priority or 0
+
 	-- Make sure that the event isn't already registered.
 	local callbacks = getEventTable(eventType, options.filter)
 	local found = table.find(callbacks, callback)
 	if (found == nil) then
 		table.insert(callbacks, callback)
+		table.sort(callbacks, eventSorter)
 	else
 		print("event.register: Attempted to register same '" .. eventType .. "' event callback twice.")
 		print(debug.traceback())
@@ -102,7 +134,7 @@ function this.trigger(eventType, payload, options)
 	payload.eventType = eventType
 	payload.eventFilter = options.filter
 
-	local callbacks = getEventTable(eventType, options.filter)
+	local callbacks = table.copy(getEventTable(eventType, options.filter))
 	for _, callback in pairs(callbacks) do
 		local status, result = pcall(callback, payload)
 		if (status == false) then

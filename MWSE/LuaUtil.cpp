@@ -15,12 +15,14 @@
 #include "NINode.h"
 #include "NIPick.h"
 #include "NISwitchNode.h"
+#include "NITriShape.h"
 
 #include "TES3Defines.h"
 #include "TES3Activator.h"
 #include "TES3Alchemy.h"
 #include "TES3Apparatus.h"
 #include "TES3Armor.h"
+#include "TES3BodyPart.h"
 #include "TES3Book.h"
 #include "TES3Cell.h"
 #include "TES3Class.h"
@@ -33,6 +35,7 @@
 #include "TES3Door.h"
 #include "TES3Enchantment.h"
 #include "TES3Faction.h"
+#include "TES3GameFile.h"
 #include "TES3GameSetting.h"
 #include "TES3GlobalVariable.h"
 #include "TES3Ingredient.h"
@@ -90,7 +93,7 @@ namespace mwse {
 				sol::object maybeScript = params["_script"];
 				if (maybeScript.valid()) {
 					if (maybeScript.is<std::string>()) {
-						return tes3::getDataHandler()->nonDynamicData->findScriptByName(maybeScript.as<std::string>().c_str());
+						return TES3::DataHandler::get()->nonDynamicData->findScriptByName(maybeScript.as<std::string>().c_str());
 					}
 					else if (maybeScript.is<TES3::Script*>()) {
 						return maybeScript.as<TES3::Script*>();
@@ -134,7 +137,7 @@ namespace mwse {
 				sol::object maybeValue = params[key];
 				if (maybeValue.valid()) {
 					if (maybeValue.is<std::string>()) {
-						return tes3::getDataHandler()->nonDynamicData->findScriptByName(maybeValue.as<std::string>().c_str());
+						return TES3::DataHandler::get()->nonDynamicData->findScriptByName(maybeValue.as<std::string>().c_str());
 					}
 					else if (maybeValue.is<TES3::Script*>()) {
 						return maybeValue.as<TES3::Script*>();
@@ -167,6 +170,31 @@ namespace mwse {
 			return value;
 		}
 
+		TES3::MobileActor* getOptionalParamMobileActor(sol::optional<sol::table> maybeParams, const char* key) {
+			TES3::MobileActor* value = nullptr;
+
+			if (maybeParams) {
+				sol::table params = maybeParams.value();
+				sol::object maybeValue = params[key];
+				if (maybeValue.valid()) {
+					if (maybeValue.is<std::string>()) {
+						TES3::Reference * reference = tes3::getReference(maybeValue.as<std::string>());
+						if (reference) {
+							value = reference->getAttachedMobileActor();
+						}
+					}
+					else if (maybeValue.is<TES3::Reference*>()) {
+						value = maybeValue.as<TES3::Reference*>()->getAttachedMobileActor();
+					}
+					else if (maybeValue.is<TES3::MobileActor*>()) {
+						value = maybeValue.as<TES3::MobileActor*>();
+					}
+				}
+			}
+
+			return value;
+		}
+
 		TES3::Spell* getOptionalParamSpell(sol::optional<sol::table> maybeParams, const char* key) {
 			TES3::Spell* value = NULL;
 
@@ -175,7 +203,7 @@ namespace mwse {
 				sol::object maybeValue = params[key];
 				if (maybeValue.valid()) {
 					if (maybeValue.is<std::string>()) {
-						value = tes3::getSpellById(maybeValue.as<std::string>().c_str());
+						value = TES3::DataHandler::get()->nonDynamicData->getSpellById(maybeValue.as<std::string>().c_str());
 					}
 					else if (maybeValue.is<TES3::Spell*>()) {
 						value = maybeValue.as<TES3::Spell*>();
@@ -186,18 +214,18 @@ namespace mwse {
 			return value;
 		}
 
-		TES3::DialogueInfo* getOptionalParamTopic(sol::optional<sol::table> maybeParams, const char* key) {
-			TES3::DialogueInfo* value = NULL;
+		TES3::Dialogue* getOptionalParamDialogue(sol::optional<sol::table> maybeParams, const char* key) {
+			TES3::Dialogue* value = NULL;
 
 			if (maybeParams) {
 				sol::table params = maybeParams.value();
 				sol::object maybeValue = params[key];
 				if (maybeValue.valid()) {
-					if (maybeValue.is<std::string>()) {
-						value = tes3::getDataHandler()->nonDynamicData->findDialogInfo(maybeValue.as<std::string>().c_str());
+					if (maybeValue.is<const char*>()) {
+						value = TES3::DataHandler::get()->nonDynamicData->findDialogue(maybeValue.as<const char*>());
 					}
-					else if (maybeValue.is<TES3::DialogueInfo*>()) {
-						value = maybeValue.as<TES3::DialogueInfo*>();
+					else if (maybeValue.is<TES3::Dialogue*>()) {
+						value = maybeValue.as<TES3::Dialogue*>();
 					}
 				}
 			}
@@ -213,7 +241,7 @@ namespace mwse {
 				sol::object maybeValue = params[key];
 				if (maybeValue.valid()) {
 					if (maybeValue.is<std::string>()) {
-						value = tes3::getDataHandler()->nonDynamicData->findSound(maybeValue.as<std::string>().c_str());
+						value = TES3::DataHandler::get()->nonDynamicData->findSound(maybeValue.as<std::string>().c_str());
 					}
 					else if (maybeValue.is<TES3::Sound*>()) {
 						value = maybeValue.as<TES3::Sound*>();
@@ -224,29 +252,54 @@ namespace mwse {
 			return value;
 		}
 
-		TES3::Vector3* getOptionalParamVector3(sol::optional<sol::table> maybeParams, const char* key) {
+		sol::optional<TES3::Vector3> getOptionalParamVector3(sol::optional<sol::table> maybeParams, const char* key) {
 			if (maybeParams) {
 				sol::table params = maybeParams.value();
 				sol::object maybeValue = params[key];
 				if (maybeValue.valid()) {
 					// Were we given a real vector?
 					if (maybeValue.is<TES3::Vector3*>()) {
-						return maybeValue.as<TES3::Vector3*>();
+						return *maybeValue.as<TES3::Vector3*>();
 					}
 
 					// Were we given a table?
-					else if (maybeValue.is<sol::table>()) {
+					else if (maybeValue.get_type() == sol::type::table) {
 						sol::table value = maybeValue.as<sol::table>();
 						TES3::Vector3* result = tes3::malloc<TES3::Vector3>();
 						result->x = value[1];
 						result->y = value[2];
 						result->z = value[3];
-						return result;
+						return TES3::Vector3(value[1], value[2], value[3]);
 					}
 				}
 			}
 
-			return NULL;
+			return sol::optional<TES3::Vector3>();
+		}
+
+		TES3::Cell* getOptionalParamCell(sol::optional<sol::table> maybeParams, const char* key) {
+			TES3::Cell* value = nullptr;
+
+			if (maybeParams) {
+				sol::table params = maybeParams.value();
+				sol::object maybeValue = params[key];
+				if (maybeValue.valid()) {
+					if (maybeValue.is<const char*>()) {
+						value = TES3::DataHandler::get()->nonDynamicData->getCellByName(maybeValue.as<const char*>());
+					}
+					else if (maybeValue.is<TES3::Cell*>()) {
+						value = maybeValue.as<TES3::Cell*>();
+					}
+					else if (maybeValue.get_type() == sol::type::table) {
+						sol::table coordsTable = maybeValue.as<sol::table>();
+						if (coordsTable.size() == 2) {
+							value = TES3::DataHandler::get()->nonDynamicData->getCellByGrid(coordsTable[1], coordsTable[2]);
+						}
+					}
+				}
+			}
+
+			return value;
 		}
 
 		void setVectorFromLua(TES3::Vector3* vector, sol::stack_object value) {
@@ -258,7 +311,7 @@ namespace mwse {
 				vector->z = newVector->z;
 			}
 			// Allow a simple table to be provided.
-			else if (value.is<sol::table>()) {
+			else if (value.get_type() == sol::type::table) {
 				// Get the values from the table.
 				sol::table table = value.as<sol::table>();
 				if (table.size() == 3) {
@@ -297,6 +350,9 @@ namespace mwse {
 			case TES3::ObjectType::Armor:
 				result = sol::make_object(state, reinterpret_cast<TES3::Armor*>(object));
 				break;
+			case TES3::ObjectType::Bodypart:
+				result = sol::make_object(state, reinterpret_cast<TES3::BodyPart*>(object));
+				break;
 			case TES3::ObjectType::Book:
 				result = sol::make_object(state, reinterpret_cast<TES3::Book*>(object));
 				break;
@@ -311,7 +367,7 @@ namespace mwse {
 				break;
 			case TES3::ObjectType::Container:
 			{
-				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlag::IsBase) {
+				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlagContainer::IsBase) {
 					result = sol::make_object(state, reinterpret_cast<TES3::Container*>(object));
 				}
 				else {
@@ -321,7 +377,7 @@ namespace mwse {
 			break;
 			case TES3::ObjectType::Creature:
 			{
-				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlag::IsBase) {
+				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlagCreature::IsBase) {
 					result = sol::make_object(state, reinterpret_cast<TES3::Creature*>(object));
 				}
 				else {
@@ -365,12 +421,15 @@ namespace mwse {
 			case TES3::ObjectType::Lockpick:
 				result = sol::make_object(state, reinterpret_cast<TES3::Lockpick*>(object));
 				break;
+			case TES3::ObjectType::MagicEffect:
+				result = sol::make_object(state, reinterpret_cast<TES3::MagicEffect*>(object));
+				break;
 			case TES3::ObjectType::Misc:
 				result = sol::make_object(state, reinterpret_cast<TES3::Misc*>(object));
 				break;
 			case TES3::ObjectType::NPC:
 			{
-				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlag::IsBase) {
+				if (reinterpret_cast<TES3::Actor*>(object)->actorFlags & TES3::ActorFlagNPC::IsBase) {
 					result = sol::make_object(state, reinterpret_cast<TES3::NPC*>(object));
 				}
 				else {
@@ -490,6 +549,15 @@ namespace mwse {
 			return sol::make_object(state, weather);
 		}
 
+		sol::object makeLuaObject(TES3::GameFile* gameFile) {
+			if (gameFile == NULL) {
+				return sol::nil;
+			}
+
+			sol::state& state = LuaManager::getInstance().getState();
+			return sol::make_object(state, gameFile);
+		}
+
 		sol::object makeLuaObject(NI::Object* object) {
 			if (object == NULL) {
 				return sol::nil;
@@ -500,29 +568,109 @@ namespace mwse {
 			sol::state& state = luaManager.getState();
 
 			switch ((uintptr_t)object->getRunTimeTypeInformation()) {
-			case NI::RTTIStaticPtr::AVObject:
+			case NI::RTTIStaticPtr::NiAVObject:
 				return sol::make_object(state, reinterpret_cast<NI::AVObject*>(object));
-			case NI::RTTIStaticPtr::Camera:
+			case NI::RTTIStaticPtr::NiCamera:
 				return sol::make_object(state, reinterpret_cast<NI::Camera*>(object));
-			case NI::RTTIStaticPtr::Node:
+			case NI::RTTIStaticPtr::NiNode:
 				return sol::make_object(state, reinterpret_cast<NI::Node*>(object));
-			case NI::RTTIStaticPtr::ObjectNET:
+			case NI::RTTIStaticPtr::NiObjectNET:
 				return sol::make_object(state, reinterpret_cast<NI::ObjectNET*>(object));
-			case NI::RTTIStaticPtr::SwitchNode:
+			case NI::RTTIStaticPtr::NiPixelData:
+				return sol::make_object(state, reinterpret_cast<NI::PixelData*>(object));
+			case NI::RTTIStaticPtr::NiSourceTexture:
+				return sol::make_object(state, reinterpret_cast<NI::SourceTexture*>(object));
+			case NI::RTTIStaticPtr::NiSwitchNode:
 				return sol::make_object(state, reinterpret_cast<NI::SwitchNode*>(object));
+			case NI::RTTIStaticPtr::NiTriShape:
+				return sol::make_object(state, reinterpret_cast<NI::TriShape*>(object));
 			}
 
-			if (object->isInstanceOfType(NI::RTTIStaticPtr::Node)) {
+			if (object->isInstanceOfType(NI::RTTIStaticPtr::NiNode)) {
 				return sol::make_object(state, reinterpret_cast<NI::Node*>(object));
 			}
-			else if (object->isInstanceOfType(NI::RTTIStaticPtr::AVObject)) {
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiTriShape)) {
+				return sol::make_object(state, reinterpret_cast<NI::TriShape*>(object));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiAVObject)) {
 				return sol::make_object(state, reinterpret_cast<NI::AVObject*>(object));
 			}
-			else if (object->isInstanceOfType(NI::RTTIStaticPtr::ObjectNET)) {
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiSourceTexture)) {
+				return sol::make_object(state, reinterpret_cast<NI::SourceTexture*>(object));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiObjectNET)) {
 				return sol::make_object(state, reinterpret_cast<NI::ObjectNET*>(object));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiPixelData)) {
+				return sol::make_object(state, reinterpret_cast<NI::PixelData*>(object));
 			}
 
 			return sol::make_object(state, object);
+		}
+
+		sol::object makeLuaNiPointer(NI::Object * object) {
+			if (object == nullptr) {
+				return sol::nil;
+			}
+
+			LuaManager& luaManager = LuaManager::getInstance();
+
+			sol::state& state = luaManager.getState();
+
+			switch ((uintptr_t)object->getRunTimeTypeInformation()) {
+			case NI::RTTIStaticPtr::NiAVObject:
+				return sol::make_object(state, NI::Pointer<NI::AVObject>(reinterpret_cast<NI::AVObject*>(object)));
+			case NI::RTTIStaticPtr::NiCamera:
+				return sol::make_object(state, NI::Pointer<NI::Camera>(reinterpret_cast<NI::Camera*>(object)));
+			case NI::RTTIStaticPtr::NiNode:
+				return sol::make_object(state, NI::Pointer<NI::Node>(reinterpret_cast<NI::Node*>(object)));
+			case NI::RTTIStaticPtr::NiObjectNET:
+				return sol::make_object(state, NI::Pointer<NI::ObjectNET>(reinterpret_cast<NI::ObjectNET*>(object)));
+			case NI::RTTIStaticPtr::NiPixelData:
+				return sol::make_object(state, NI::Pointer<NI::PixelData>(reinterpret_cast<NI::PixelData*>(object)));
+			case NI::RTTIStaticPtr::NiSourceTexture:
+				return sol::make_object(state, NI::Pointer<NI::SourceTexture>(reinterpret_cast<NI::SourceTexture*>(object)));
+			case NI::RTTIStaticPtr::NiSwitchNode:
+				return sol::make_object(state, NI::Pointer<NI::SwitchNode>(reinterpret_cast<NI::SwitchNode*>(object)));
+			case NI::RTTIStaticPtr::NiTriShape:
+				return sol::make_object(state, NI::Pointer<NI::TriShape>(reinterpret_cast<NI::TriShape*>(object)));
+			}
+
+			if (object->isInstanceOfType(NI::RTTIStaticPtr::NiNode)) {
+				return sol::make_object(state, NI::Pointer<NI::Node>(reinterpret_cast<NI::Node*>(object)));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiTriShape)) {
+				return sol::make_object(state, NI::Pointer<NI::TriShape>(reinterpret_cast<NI::TriShape*>(object)));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiAVObject)) {
+				return sol::make_object(state, NI::Pointer<NI::AVObject>(reinterpret_cast<NI::AVObject*>(object)));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiSourceTexture)) {
+				return sol::make_object(state, NI::Pointer<NI::SourceTexture>(reinterpret_cast<NI::SourceTexture*>(object)));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiObjectNET)) {
+				return sol::make_object(state, NI::Pointer<NI::ObjectNET>(reinterpret_cast<NI::ObjectNET*>(object)));
+			}
+			else if (object->isInstanceOfType(NI::RTTIStaticPtr::NiPixelData)) {
+				return sol::make_object(state, NI::Pointer<NI::PixelData>(reinterpret_cast<NI::PixelData*>(object)));
+			}
+
+			return sol::make_object(state, object);
+		}
+
+		void logStackTrace(const char* message) {
+			if (message != nullptr) {
+				log::getLog() << message << std::endl;
+			}
+
+			sol::state& state = LuaManager::getInstance().getState();
+			sol::protected_function_result result = state["debug"]["traceback"]();
+			if (result.valid()) {
+				sol::optional<std::string> asString = result;
+				if (asString) {
+					log::getLog() << asString.value() << std::endl;
+				}
+			}
 		}
 	}
 }

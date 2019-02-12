@@ -24,6 +24,7 @@
 #include "InstructionInterface.h"
 #include "TES3Util.h"
 
+#include "TES3ItemData.h"
 #include "TES3Reference.h"
 #include "TES3Armor.h"
 #include "TES3Weapon.h"
@@ -100,7 +101,7 @@ namespace mwse
 		}
 
 		// If there's a variable node containing condition, and we need to change it, do so.
-		auto varNode = tes3::getAttachedItemDataNode(reference);
+		auto varNode = reference->getAttachedItemData();
 		if (varNode && varNode->condition > maxCondition) {
 			varNode->condition = maxCondition;
 			success = true;

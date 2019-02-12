@@ -5,6 +5,7 @@
 #include "TES3Defines.h"
 
 #include "TES3Collections.h"
+#include "TES3Vectors.h"
 
 namespace TES3 {
 	struct ItemStack {
@@ -26,6 +27,12 @@ namespace TES3 {
 		ItemData * variables; // 0x4
 
 		//
+		// Other related helper functions.
+		//
+
+		int getAdjustedValue();
+
+		//
 		// Lua interface functions.
 		//
 
@@ -43,7 +50,22 @@ namespace TES3 {
 		//
 
 		ItemStack* findItemStack(Object* item);
+
+		int addItem(MobileActor * mobile, Item * item, int count, bool something, ItemData ** itemDataRef);
+		void removeItemWithData(MobileActor * mobile, Item * item, ItemData * itemData, int count, bool deleteStackData);
+		void dropItem(MobileActor* mobileActor, Item * item, ItemData * itemData, int count, Vector3 position, Vector3 orientation, bool unknown = false);
+
 		void resolveLeveledLists(MobileActor*);
+
+		//
+		// Custom functions.
+		//
+
+		bool containsItem(Item * item, ItemData * data = nullptr);
+
+		float calculateContainedWeight();
+
+		int getSoulGemCount();
 
 	};
 	static_assert(sizeof(Inventory) == 0x1C, "TES3::Inventory failed size validation");

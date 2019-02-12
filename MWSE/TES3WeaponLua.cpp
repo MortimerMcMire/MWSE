@@ -27,9 +27,9 @@ namespace mwse {
 			usertypeDefinition.set("enchantCapacity", &TES3::Weapon::enchantCapacity);
 			usertypeDefinition.set("enchantment", sol::property(&TES3::Weapon::getEnchantment, &TES3::Weapon::setEnchantment));
 			usertypeDefinition.set("flags", &TES3::Weapon::materialFlags);
-			usertypeDefinition.set("health", sol::readonly_property(&TES3::Weapon::getDurability));
+			usertypeDefinition.set("maxCondition", sol::property(&TES3::Weapon::getDurability, &TES3::Weapon::setDurability));
 			usertypeDefinition.set("icon", sol::readonly_property(&TES3::Weapon::getIconPath));
-			usertypeDefinition.set("model", sol::readonly_property(&TES3::Weapon::getModelPath));
+			usertypeDefinition.set("mesh", sol::readonly_property(&TES3::Weapon::getModelPath));
 			usertypeDefinition.set("name", sol::property(&TES3::Weapon::getName, &TES3::Weapon::setName));
 			usertypeDefinition.set("reach", &TES3::Weapon::reach);
 			usertypeDefinition.set("slashMax", &TES3::Weapon::slashMax);
@@ -38,19 +38,24 @@ namespace mwse {
 			usertypeDefinition.set("thrustMax", &TES3::Weapon::thrustMax);
 			usertypeDefinition.set("thrustMin", &TES3::Weapon::thrustMin);
 			usertypeDefinition.set("type", sol::readonly_property(&TES3::Weapon::getType));
-			usertypeDefinition.set("value", sol::readonly_property(&TES3::Weapon::getValue));
-			usertypeDefinition.set("weight", sol::readonly_property(&TES3::Weapon::getWeight));
+			usertypeDefinition.set("value", &TES3::Weapon::value);
+			usertypeDefinition.set("weight", &TES3::Weapon::weight);
 
 			// Access to other objects that need to be packaged.
 			usertypeDefinition.set("script", sol::readonly_property(&TES3::Weapon::getScript));
 
 			// Functions exposed as properties.
-			usertypeDefinition.set("typeName", sol::readonly_property(&TES3::Weapon::getTypeName));
+			usertypeDefinition.set("hasDurability", sol::readonly_property(&TES3::Weapon::hasDurability));
 			usertypeDefinition.set("isOneHanded", sol::readonly_property(&TES3::Weapon::isOneHanded));
 			usertypeDefinition.set("isTwoHanded", sol::readonly_property(&TES3::Weapon::isTwoHanded));
 			usertypeDefinition.set("isMelee", sol::readonly_property(&TES3::Weapon::isMelee));
 			usertypeDefinition.set("isRanged", sol::readonly_property(&TES3::Weapon::isRanged));
 			usertypeDefinition.set("isAmmo", sol::readonly_property(&TES3::Weapon::isAmmo));
+			usertypeDefinition.set("typeName", sol::readonly_property(&TES3::Weapon::getTypeName));
+
+			// TODO: Deprecated. Remove before 2.1-stable.
+			usertypeDefinition.set("health", sol::readonly_property(&TES3::Weapon::getDurability));
+			usertypeDefinition.set("model", sol::readonly_property(&TES3::Weapon::getModelPath));
 
 			// Finish up our usertype.
 			state.set_usertype("tes3weapon", usertypeDefinition);

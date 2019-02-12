@@ -4,6 +4,7 @@
 #include "TES3ActorLua.h"
 
 #include "TES3NPC.h"
+#include "TES3BodyPart.h"
 #include "TES3Race.h"
 #include "TES3Class.h"
 #include "TES3Faction.h"
@@ -30,6 +31,8 @@ namespace mwse {
 				usertypeDefinition.set("factionIndex", &TES3::NPC::factionIndex);
 				usertypeDefinition.set("factionRank", &TES3::NPC::factionRank);
 				usertypeDefinition.set("fatigue", &TES3::NPC::fatigue);
+				usertypeDefinition.set("hair", &TES3::NPC::hair);
+				usertypeDefinition.set("head", &TES3::NPC::head);
 				usertypeDefinition.set("health", &TES3::NPC::health);
 				usertypeDefinition.set("level", &TES3::NPC::level);
 				usertypeDefinition.set("magicka", &TES3::NPC::magicka);
@@ -54,9 +57,30 @@ namespace mwse {
 				usertypeDefinition.set("isAttacked", sol::readonly_property(&TES3::NPC::getIsAttacked));
 				usertypeDefinition.set("isEssential", sol::readonly_property(&TES3::NPC::isEssential));
 				usertypeDefinition.set("isRespawn", sol::readonly_property(&TES3::NPC::isRespawn));
-				usertypeDefinition.set("model", sol::property(&TES3::NPC::getModelPath, &TES3::NPC::setModelPath));
+				usertypeDefinition.set("mesh", sol::property(&TES3::NPC::getModelPath, &TES3::NPC::setModelPath));
 				usertypeDefinition.set("name", sol::property(&TES3::NPC::getName, &TES3::NPC::setName));
 				usertypeDefinition.set("spells", sol::readonly_property([](TES3::NPC& self) { return &self.spellList; }));
+
+				// Easy access to actor flags.
+				usertypeDefinition.set("female", sol::property(
+					[](TES3::NPC& self) { return self.getActorFlag(TES3::ActorFlagNPC::Female); },
+					[](TES3::NPC& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Female, state); }
+				));
+				usertypeDefinition.set("essential", sol::property(
+					[](TES3::NPC& self) { return self.getActorFlag(TES3::ActorFlagNPC::Essential); },
+					[](TES3::NPC& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Essential, state); }
+				));
+				usertypeDefinition.set("respawns", sol::property(
+					[](TES3::NPC& self) { return self.getActorFlag(TES3::ActorFlagNPC::Respawn); },
+					[](TES3::NPC& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Respawn, state); }
+				));
+				usertypeDefinition.set("autoCalc", sol::property(
+					[](TES3::NPC& self) { return self.getActorFlag(TES3::ActorFlagNPC::AutoCalc); },
+					[](TES3::NPC& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::AutoCalc, state); }
+				));
+
+				// TODO: Deprecated. Remove before 2.1-stable.
+				usertypeDefinition.set("model", sol::property(&TES3::NPC::getModelPath, &TES3::NPC::setModelPath));
 
 				// Finish up our usertype.
 				state.set_usertype("tes3npc", usertypeDefinition);
@@ -73,7 +97,7 @@ namespace mwse {
 				setUserdataForActor(usertypeDefinition);
 
 				// Basic property binding.
-				usertypeDefinition.set("disposition", &TES3::NPCInstance::disposition);
+				usertypeDefinition.set("disposition", sol::property(&TES3::NPCInstance::getDisposition, &TES3::NPCInstance::setDisposition));
 				usertypeDefinition.set("factionIndex", &TES3::NPCInstance::factionIndex);
 
 				// Indirect bindings to unions and arrays.
@@ -100,9 +124,30 @@ namespace mwse {
 				usertypeDefinition.set("isEssential", sol::readonly_property(&TES3::NPCInstance::isEssential));
 				usertypeDefinition.set("isRespawn", sol::readonly_property(&TES3::NPCInstance::isRespawn));
 				usertypeDefinition.set("level", sol::readonly_property(&TES3::NPCInstance::getLevel));
-				usertypeDefinition.set("model", sol::property(&TES3::NPCInstance::getModelPath, &TES3::NPCInstance::setModelPath));
+				usertypeDefinition.set("mesh", sol::property(&TES3::NPCInstance::getModelPath, &TES3::NPCInstance::setModelPath));
 				usertypeDefinition.set("name", sol::property(&TES3::NPCInstance::getName, &TES3::NPCInstance::setName));
 				usertypeDefinition.set("spells", sol::readonly_property([](TES3::NPCInstance& self) { return &self.baseNPC->spellList; }));
+
+				// Easy access to actor flags.
+				usertypeDefinition.set("female", sol::property(
+					[](TES3::NPCInstance& self) { return self.getActorFlag(TES3::ActorFlagNPC::Female); },
+					[](TES3::NPCInstance& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Female, state); }
+				));
+				usertypeDefinition.set("essential", sol::property(
+					[](TES3::NPCInstance& self) { return self.getActorFlag(TES3::ActorFlagNPC::Essential); },
+					[](TES3::NPCInstance& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Essential, state); }
+				));
+				usertypeDefinition.set("respawns", sol::property(
+					[](TES3::NPCInstance& self) { return self.getActorFlag(TES3::ActorFlagNPC::Respawn); },
+					[](TES3::NPCInstance& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::Respawn, state); }
+				));
+				usertypeDefinition.set("autoCalc", sol::property(
+					[](TES3::NPCInstance& self) { return self.getActorFlag(TES3::ActorFlagNPC::AutoCalc); },
+					[](TES3::NPCInstance& self, bool state) { return self.setActorFlag(TES3::ActorFlagNPC::AutoCalc, state); }
+				));
+
+				// TODO: Deprecated. Remove before 2.1-stable.
+				usertypeDefinition.set("model", sol::property(&TES3::NPCInstance::getModelPath, &TES3::NPCInstance::setModelPath));
 
 				// Finish up our usertype.
 				state.set_usertype("tes3npcInstance", usertypeDefinition);

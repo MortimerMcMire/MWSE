@@ -59,33 +59,66 @@ namespace TES3 {
 			Silence,
 			Blind,
 			Paralyze,
-			Invisibility
+			Invisibility,
+			Fight,
+			Flee,
+			Hello,
+			Alarm,
+			NonResistable
+		};
+	}
+
+	namespace Voiceover {
+		enum Voiceover {
+			Hello,
+			Idle,
+			Intruder,
+			Thief,
+			Hit,
+			Attack,
+			Flee,
+
+			First = Hello,
+			Last = Flee
 		};
 	}
 
 	struct MobileActor : MobileObject {
+		struct ActiveMagicEffect {
+			ActiveMagicEffect* next; // 0x0
+			ActiveMagicEffect* prev; // 0x4
+			unsigned int magicInstanceSerial; // 0x8
+			short magicInstanceEffectIndex; // 0xC
+			short magicEffectID; // 0xE
+			bool isHarmful; // 0x10
+			bool unknown_0x9; // 0x11
+			unsigned short duration; // 0x14
+			unsigned short magnitudeMin; // 0x16
+			unsigned char skillOrAttributeID; // 0x18
+		};
+
 		void * unknown_0x60;
-		int unknown_0x64;
-		Vector3 unknown_0x68;
+		float thisFrameDistanceMoved;
+		Vector3 thisFrameDeltaPosition;
 		float unknown_0x74;
 		int unknown_0x78;
-		int unknown_0x7C;
+		char unknown_0x7C;
 		Iterator<MobileActor> listTargetActors; // 0x80
 		Iterator<MobileActor> listFriendlyActors; // 0x94
 		float scanTimer; // 0xA8
 		int scanInterval; // 0xAC
-		int greetTimer; // B0
+		float greetTimer; // B0
 		Vector3 unknown_0xB4;
 		char unknown_0xC0;
 		char unknown_0xC1; // Undefined.
 		char unknown_0xC2; // Undefined.
 		char unknown_0xC3; // Undefined.
 		float unknown_0xC4;
-		void * aiPackageData; // 0xC8
+		AIData * aiData; // 0xC8
 		ActionData actionData; // 0xCC
 		ActionData actionBeforeCombat; // 0x13C
 		int unknown_0x1AC;
-		int unknown_0x1B0;
+		CrimeTree * unknown_0x1B0;
 		int unknown_0x1B4;
 		int unknown_0x1B8;
 		int unknown_0x1BC;
@@ -94,7 +127,7 @@ namespace TES3 {
 		char unknown_0x1C5;
 		char unknown_0x1C6;
 		char unknown_0x1C7;
-		void * activeMagicEffects; // 0x1C8 // Maybe?
+		ActiveMagicEffect* activeMagicEffects; // 0x1C8
 		int activeMagicEffectCount; // 0x1CC
 		int unknown_0x1D0;
 		char unknown_0x1D4;
@@ -194,12 +227,26 @@ namespace TES3 {
 		void startCombat(MobileActor*);
 		void stopCombat(bool);
 		void onDeath();
-		bool applyHealthDamage(float, bool, bool, bool);
+		bool applyHealthDamage(float damage, bool flipDifficultyScale, bool scaleWithDifficulty, bool takeHealth);
 		bool hasFreeAction();
 		float calculateRunSpeed();
 		float calculateSwimSpeed();
 		float calculateSwimRunSpeed();
 		float calculateFlySpeed();
+
+		void updateDerivedStatistics(Statistic * baseStatistic);
+
+		int determineModifiedPrice(int basePrice, bool buying);
+
+		void playVoiceover(int);
+
+		bool isAffectedByAlchemy(Alchemy * alchemy);
+		bool isAffectedByEnchantment(Enchantment * enchantment);
+		bool isAffectedBySpell(Spell * spell);
+
+		bool isActive();
+		void setCurrentMagicSourceFiltered(Object * magic);
+		void setActionTarget(MobileActor * target);
 
 		//
 		// Custom functions.
@@ -208,7 +255,11 @@ namespace TES3 {
 		bool getMobileActorFlag(MobileActorFlag::Flag);
 		void setMobileActorFlag(MobileActorFlag::Flag, bool);
 
+		bool getMobileActorMovementFlag(ActorMovement::Flag);
+		void setMobileActorMovementFlag(ActorMovement::Flag, bool);
+
 		bool equipItem(Object* item);
 	};
+	static_assert(sizeof(MobileActor::ActiveMagicEffect) == 0x18, "TES3::MobileActor::ActiveMagicEffect failed size validation");
 	static_assert(sizeof(MobileActor) == 0x3B0, "TES3::MobileActor failed size validation");
 }

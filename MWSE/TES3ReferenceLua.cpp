@@ -9,14 +9,13 @@
 #include "NINode.h"
 
 #include "TES3Cell.h"
-#include "TES3MobileActor.h"
+#include "TES3DataHandler.h"
+#include "TES3ItemData.h"
+#include "TES3MobilePlayer.h"
 #include "TES3Reference.h"
+#include "TES3WorldController.h"
 
 namespace TES3 {
-	sol::object Reference::getBaseObject() {
-		return mwse::lua::makeLuaObject(baseObject);
-	}
-
 	sol::object Reference::getAttachments() {
 		sol::state& state = mwse::lua::LuaManager::getInstance().getState();
 
@@ -46,46 +45,23 @@ namespace TES3 {
 	}
 
 	sol::table& Reference::getLuaTable() {
-		// Get previous attachment.
-		LuaTableAttachment* attachment = reinterpret_cast<LuaTableAttachment*>(attachments);
-		while (attachment && attachment->type != AttachmentType::LuaTable) {
-			attachment = reinterpret_cast<LuaTableAttachment*>(attachment->next);
+		auto attachment = getOrCreateAttachedItemData();
+		if (attachment == nullptr) {
+			throw std::exception("Could not create ItemData attachment.");
 		}
 
-		// Create the attachment if it needs to be made.
-		if (attachment == NULL) {
-			// We need to ensure that our default sol::table is initialized, so ensure that new is invoked.
-			attachment = new (mwse::tes3::malloc<LuaTableAttachment>()) LuaTableAttachment();
-
-			attachment->type = AttachmentType::LuaTable;
-			attachment->next = 0;
-
-			// Set this as the first attachment...
-			if (attachments == NULL) {
-				attachments = attachment;
-			}
-			// ... or link up the attachment.
-			else {
-				auto lastAttachment = attachments;
-				while (lastAttachment->next) {
-					lastAttachment = lastAttachment->next;
-				}
-				lastAttachment->next = attachment;
-			}
-
-			// Create our empty table.
-			sol::state& state = mwse::lua::LuaManager::getInstance().getState();
-			attachment->table = state.create_table();
+		if (attachment->luaData == nullptr) {
+			attachment->luaData = new ItemData::LuaData();
 		}
 
-		return attachment->table;
+		return attachment->luaData->data;
 	}
 }
 
 namespace mwse {
 	namespace lua {
 		sol::object getContext(TES3::Reference* reference) {
-			auto variables = tes3::getAttachedItemDataNode(reference);
+			auto variables = reference->getAttachedItemData();
 			if (variables == NULL) {
 				return sol::nil;
 			}
@@ -106,7 +82,18 @@ namespace mwse {
 			setUserdataForObject(usertypeDefinition);
 
 			// Access to other objects that need to be packaged.
-			usertypeDefinition.set("cell", sol::readonly_property([](TES3::Reference& self) { return makeLuaObject(self.owningCollection.asReferenceList != NULL ? self.owningCollection.asReferenceList->cell : NULL); }));
+			usertypeDefinition.set("cell", sol::readonly_property([](TES3::Reference& self) -> sol::object {
+				// Handle case for the player.
+				if (TES3::WorldController::get()->getMobilePlayer()->reference == &self) {
+					return makeLuaObject(TES3::DataHandler::get()->currentCell);
+				}
+
+				if (self.owningCollection.asReferenceList == nullptr) {
+					return sol::nil;
+				}
+
+				return makeLuaObject(self.owningCollection.asReferenceList->cell);
+			}));
 			usertypeDefinition.set("object", sol::readonly_property([](TES3::Reference& self) { return makeLuaObject(self.baseObject); }));
 			usertypeDefinition.set("sceneNode", sol::readonly_property([](TES3::Reference& self) { return makeLuaObject(self.sceneNode); }));
 
@@ -116,6 +103,7 @@ namespace mwse {
 			usertypeDefinition.set("setActionFlag", &TES3::Reference::setActionFlag);
 			usertypeDefinition.set("clearActionFlag", &TES3::Reference::clearActionFlag);
 			usertypeDefinition.set("testActionFlag", &TES3::Reference::testActionFlag);
+			usertypeDefinition.set("updateEquipment", &TES3::Reference::updateEquipment);
 
 			// Functions exposed as properties.
 			usertypeDefinition.set("activationReference", sol::property(&TES3::Reference::getActionReference, &TES3::Reference::setActionReference));
@@ -136,27 +124,27 @@ namespace mwse {
 
 			// Quick access to attachment data.
 			usertypeDefinition.set("lockNode", sol::property([](TES3::Reference& self) {
-				return tes3::getAttachedLockNode(&self);
+				return self.getAttachedLockNode();
 			}));
 			usertypeDefinition.set("destination", sol::property([](TES3::Reference& self) -> TES3::TravelDestination * {
-				TES3::TravelDestinationAttachment * attachment = tes3::getAttachment<TES3::TravelDestinationAttachment>(&self, TES3::AttachmentType::TravelDestination);
+				TES3::TravelDestinationAttachment * attachment = static_cast<TES3::TravelDestinationAttachment*>(self.getAttachment(TES3::AttachmentType::TravelDestination));
 				if (attachment) {
 					return attachment->data;
 				}
 				return nullptr;
 			}));
 			usertypeDefinition.set("mobile", sol::property([](TES3::Reference& self) {
-				return makeLuaObject(tes3::getAttachedMobileActor(&self));
+				return makeLuaObject(self.getAttachedMobileActor());
 			}));
 			usertypeDefinition.set("stackSize", sol::property(
 				[](TES3::Reference& self)
 			{
-				TES3::ItemData* itemData = tes3::getAttachedItemDataNode(&self);
+				TES3::ItemData* itemData = self.getAttachedItemData();
 				return itemData ? itemData->count : 1;
 			},
 				[](TES3::Reference& self, int count)
 			{
-				TES3::ItemData* itemData = tes3::getOrCreateAttachedItemDataNode(&self);
+				TES3::ItemData* itemData = self.getOrCreateAttachedItemData();
 				itemData->count = count;
 			}
 			));

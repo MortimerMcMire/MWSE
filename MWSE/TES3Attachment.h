@@ -8,13 +8,13 @@
 namespace TES3 {
 	namespace AttachmentType {
 		enum AttachmentType {
+			Animation = 0x0,
 			Lock = 0x3,
 			TravelDestination = 0x5,
 			Variables = 0x6,
 			ActorData = 0x8,
 			Action = 0x9,
-			NewOrientation = 0xA,
-			LuaTable = 0x0100
+			NewOrientation = 0xA
 		};
 	}
 
@@ -29,6 +29,12 @@ namespace TES3 {
 		T * data;
 	};
 	static_assert(sizeof(AttachmentWithNode<void>) == 0xC, "TES3::AttachmentWithNode failed size validation");
+
+	//
+	// Animation data.
+	//
+
+	typedef AttachmentWithNode<AnimationData> AnimationAttachment;
 
 	//
 	// Locks
@@ -50,7 +56,7 @@ namespace TES3 {
 
 	struct TravelDestination {
 		Cell * cell; // 0x0
-		int unknown_0x4;
+		char * cellName; // 0x4
 		Reference * destination; // 0x8
 	};
 	static_assert(sizeof(TravelDestination) == 0xC, "TES3::TravelDestination failed size validation");
